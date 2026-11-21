@@ -180,34 +180,115 @@
   .guide-box button { background: var(--ink-color); color: var(--paper-bg); border: none; padding: 10px 30px; border-radius: 20px; font-size: 1rem; cursor: pointer; font-family: inherit; transition: 0.3s; }
 
   /* 手机端适配 */
-  @media (max-width: 768px) and (orientation: portrait) {
-    .book { height: 82vh; width: 86vw; margin-left: 10vw; display: block; border-radius: 8px; }
-    .book::before, .book::after { display: none; } 
-    .page { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 4px 8px 8px 4px; box-shadow: -10px 10px 30px rgba(0,0,0,0.8); }
-    .page::after { content: ""; position: absolute; left: 0; top: 0; width: 20px; height: 100%; background: linear-gradient(to right, rgba(20, 10, 5, 0.8), transparent); pointer-events: none; z-index: 5; }
-    
-    /* 手机端图片占位在上，文字在下 */
-    .page.page-left { height: 35%; border-radius: 4px 8px 0 0; z-index: 6; }
-    .page.page-right { top: 35%; height: 65%; border-radius: 0 0 8px 4px; }
-    .page-left::after { display: none; }
-    .page-right::after { display: none; }
-    
-    .page-right .content { padding: 25px 20px; }
-    .page-right h2 { font-size: 1.4rem; margin-bottom: 15px; padding-bottom: 10px;}
-    .page-right p { font-size: 1.05rem; line-height: 2; }
-    
-    /* 隐藏手机端的3D纸 */
-    .flip-page { display: none !important; }
-
-    /* 手机端切换故事用淡入淡出 */
-    .page-right .content.anim-next { animation: mobileInNext .4s ease-out forwards; }
-    .page-right .content.anim-prev { animation: mobileInPrev .4s ease-out forwards; }
-    @keyframes mobileInNext { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
-    @keyframes mobileInPrev { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
-    
-    .home-scroll-container { padding: 0 5vw; }
-    .slide-wrap { gap: 1.5rem; }
+  /* 手机端适配 */
+/* 手机端适配 */
+@media (max-width: 768px) and (orientation: portrait) {
+  /* 书本铺满屏幕，绝对不能有任何滚动条 */
+  .book {
+    height: 100vh; height: 100dvh;
+    width: 100vw;
+    margin: 0; border-radius: 0;
+    display: block;
+    overflow: hidden; 
+    box-shadow: none;
   }
+  .book::before, .book::after { display: none; }
+
+  /* 页面基础设置 */
+  .page {
+    position: absolute;
+    inset: 0; width: 100%; height: 100%;
+    border-radius: 0; box-shadow: none;
+    transition: opacity 0.3s ease;
+  }
+  .page::after { display: none; }
+
+  /* 图片页：默认显示 */
+  .page.page-left {
+    z-index: 6; opacity: 1; pointer-events: auto;
+  }
+  /* 文字页：默认隐藏 */
+  .page.page-right {
+    z-index: 5; opacity: 0; pointer-events: none;
+    display: flex; flex-direction: column;
+    background: #f4ebd9 !important; /* 跟随你的主题背景 */
+  }
+  body.dark-mode .page.page-right {
+    background: #1a1a1a !important;
+  }
+
+
+  /* 当 .book 加上 .show-text 类时，切换到文字页 */
+  .book.show-text .page.page-left {
+    opacity: 0; pointer-events: none;
+  }
+  .book.show-text .page.page-right {
+    opacity: 1; pointer-events: auto; z-index: 6;
+  }
+
+  /* 图片满屏 */
+  .carousel { height: 100%; width: 100%; }
+  .carousel img { width: 100%; height: 100%; object-fit: cover; }
+  .dots { bottom: 30px; }
+
+  /* 文字页内滚动！只有文字区域可以滑 */
+  .page-right .content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 40px 22px 120px; 
+  }
+  .page-right h2 { font-size: 1.4rem; margin-bottom: 15px; padding-bottom: 10px; }
+  .page-right p { font-size: 1.05rem; line-height: 2; }
+
+  /* 手机端 3D 翻页纸 */
+  .flip-page {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    border-radius: 0; z-index: 99;
+  }
+
+  /* 缩小翻页按钮，固定在最底部 */
+  .nav-bar {
+    position: absolute;
+    bottom: 30px; left: 0; right: 0;
+    display: flex; justify-content: center; gap: 40px; 
+    z-index: 100; pointer-events: none; 
+  }
+  #prevBtn, #nextBtn {
+    width: 50px; height: 50px;
+    border-radius: 50%;
+    font-size: 1.1rem;
+    font-weight: bold;
+    padding: 0;
+    pointer-events: auto; 
+    background: rgba(0, 0, 0, 0.6); 
+    color: white; 
+    border: none;
+    display: flex; align-items: center; justify-content: center; 
+  }
+    /* 修复手机端作者手记文字溢出、重叠问题 */
+  .author-note-box {
+    height: auto !important;        /* 关键：让高度跟随文字自动撑开 */
+    min-height: 80px;               /* 给一个最小高度，避免只有一行字时框太扁 */
+    padding: 30px 15px 20px 15px !important; /* 顶部留大一点，避开标题标签 */
+    margin-top: 30px;
+    display: flex;                  /* 用 flex 保证文字垂直居中 */
+    align-items: center;            
+    justify-content: center;
+    overflow: visible !important;   /* 允许显示完整文字 */
+    position: relative;
+  }
+
+  .author-note-text {
+    display: block;
+    width: 100%;
+    font-size: 0.95rem;
+    line-height: 1.8;
+    text-align: center;
+    word-wrap: break-word;          /* 防止长文本撑破边框 */
+  }
+}
 </style>
 </head>
 <body>
@@ -5107,7 +5188,7 @@ he是天帝是一个好天帝，他知道了一切，也没有袒护自己的儿
   {
     name: "霜刃误风月（霜刃误清欢）", 
     cover: "https://imgbed.heliar.top/i/r0dagmdtpTXtXTFn_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.55.png",
-    stories: [ { title: "1.霜刃", images: ["https://imgbed.heliar.top/i/spfULLf9uWZ1IssD_%E6%88%AA%E5%B1%8F%202026-11-19%2019.47.43.png",
+    stories: [ { title: "霜刃误风月（霜刃误清欢）", images: ["https://imgbed.heliar.top/i/spfULLf9uWZ1IssD_%E6%88%AA%E5%B1%8F%202026-11-19%2019.47.43.png",
 "https://imgbed.heliar.top/i/pQYNqWmQandnzsqN_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.16.png",
 "https://imgbed.heliar.top/i/RP2v0nXrLx7q3csL_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.35.png",
 "https://imgbed.heliar.top/i/r0dagmdtpTXtXTFn_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.55.png",
@@ -5395,7 +5476,7 @@ he是天帝是一个好天帝，他知道了一切，也没有袒护自己的儿
   {
     name: "梦里的故事", 
     cover: "https://imgbed.heliar.top/i/C5pmFAz_28wqnkpi_IMG_3112.jpg",
-    stories: [ { title: "1.入梦", images: ["https://imgbed.heliar.top/i/C5pmFAz_28wqnkpi_IMG_3112.jpg",
+    stories: [ { title: "梦里的故事", images: ["https://imgbed.heliar.top/i/C5pmFAz_28wqnkpi_IMG_3112.jpg",
 "https://imgbed.heliar.top/i/WkuSIg2Jp0tDszrn_IMG_3113.jpg"], content: `把梦里的故事讲给麢听，他也给我讲了一个。
 麢的故事如下
 一桩旧事
@@ -5528,7 +5609,9 @@ function openStory(seriesIdx, storyIdx) {
   renderImages();
   startTimer();
   showView(readerView);
-  scrollableContent.scrollTop = 0; // 重置滚动条
+  
+  resetToImagePage(); // <--- 这里调用重置为图片页
+  scrollableContent.scrollTop = 0; // 电脑端的
   updateButtons();
 }
 
@@ -5590,8 +5673,24 @@ function resetTimer() { startTimer(); }
 function updateButtons() {
   const isFirst = (currentSeriesIndex === 0 && currentStoryIndex === 0);
   prevBtn.disabled = isFirst;
-  // 下一页永远不禁用，用弹窗提示
   nextBtn.disabled = false;
+
+  // 如果你在电脑端，依然是箭头
+  if (!isMobile()) {
+    prevBtn.textContent = '←'; 
+    nextBtn.textContent = '→';
+    return;
+  }
+
+  // 手机端：根据当前状态显示“上/下”
+  if (mobileIsTextPage) {
+    prevBtn.textContent = '上';
+    nextBtn.textContent = '下';
+  } else {
+    // 图片页也是“上”和“下”
+    prevBtn.textContent = '上';
+    nextBtn.textContent = '下';
+  }
 }
 
 /* 核心切换故事逻辑 */
@@ -5625,48 +5724,38 @@ function goPrevStory() {
 }
 
 /* 3D 翻书动画执行 */
+/* 3D 翻书动画执行（手机/电脑统一） */
 function flipToStory(sIdx, stIdx, reverse) {
   flipping = true;
   clearInterval(timer); clearInterval(noteTimer);
 
-  if (isMobile()) {
-    // 手机端用淡入淡出切换
-    const contentBox = document.querySelector('.page-right .content');
-    contentBox.classList.remove('anim-next', 'anim-prev');
-    void contentBox.offsetWidth; // 触发重绘
-    contentBox.classList.add(reverse ? 'anim-prev' : 'anim-next');
-    
-    setTimeout(() => {
-      currentSeriesIndex = sIdx; currentStoryIndex = stIdx;
-      renderStoryText();
-      renderImages();
-      startTimer();
-      scrollableContent.scrollTop = 0;
-      updateButtons();
-      setTimeout(() => { flipping = false; }, 400);
-    }, 200);
+  // 3D 翻页动画（保持原样）
+  const flip = document.createElement('div');
+  flip.className = 'flip-page';
+  flip.textContent = reverse ? '←' : '→';
+  bookEl.appendChild(flip);
+  void flip.offsetWidth;
 
+  if (!reverse) {
+    flip.classList.add('forward');
   } else {
-    // 电脑端 3D 翻书
-    const flip = document.createElement('div'); flip.className = 'flip-page'; flip.textContent = reverse ? '←' : '→';
-    bookEl.appendChild(flip); void flip.offsetWidth;
-    
-    if (!reverse) { flip.classList.add('forward'); } else {
-      flip.style.transition = 'none'; flip.style.transform = 'rotateY(-180deg)'; void flip.offsetWidth;
-      flip.style.transition = 'transform .8s ease-in-out'; flip.style.transform = 'rotateY(0deg)';
-    }
-    
-    setTimeout(() => {
-      currentSeriesIndex = sIdx; currentStoryIndex = stIdx;
-      renderStoryText();
-      renderImages();
-      startTimer();
-      scrollableContent.scrollTop = 0;
-      updateButtons();
-    }, 400);
-    
-    setTimeout(() => { flip.remove(); flipping = false; }, 850);
+    flip.style.transition = 'none'; flip.style.transform = 'rotateY(-180deg)'; void flip.offsetWidth;
+    flip.style.transition = 'transform .8s ease-in-out'; flip.style.transform = 'rotateY(0deg)';
   }
+
+  setTimeout(() => {
+    currentSeriesIndex = sIdx;
+    currentStoryIndex = stIdx;
+    renderStoryText();
+    renderImages();
+    startTimer();
+    
+    resetToImagePage(); // <--- 这里调用重置为图片页
+    scrollableContent.scrollTop = 0; // 电脑端的
+    updateButtons();
+  }, 400);
+
+  setTimeout(() => { flip.remove(); flipping = false; }, 850);
 }
 
 function showModal(msg) { modalText.textContent = msg; modalMask.classList.add('show'); }
@@ -5678,8 +5767,72 @@ backBtn.addEventListener('click', () => {
   else if (!seriesView.classList.contains('hidden')) { showView(homeView); }
 });
 
-prevBtn.addEventListener('click', goPrevStory);
-nextBtn.addEventListener('click', goNextStory);
+// 判断当前是不是文字页
+function isTextPage() {
+  return document.getElementById('book').classList.contains('show-text');
+}
+
+// 重置页面显示状态（打开新故事时或翻页后强制回到图片页）
+function resetToImagePage() {
+  // 只有手机才执行这个重置
+  if (isMobile()) {
+    mobileIsTextPage = false;
+    document.getElementById('book').classList.remove('show-text');
+    const content = document.querySelector('.page-right .content');
+    if (content) content.scrollTop = 0; 
+    
+    // 手机专属：切回图片页时，按钮显示“下”
+    prevBtn.textContent = '上';
+    nextBtn.textContent = '下';
+  }
+}
+let mobileIsTextPage = false; // 专给手机端用的状态
+// 点击“下一页”
+// 点击下一页
+nextBtn.addEventListener('click', () => {
+  if (isMobile()) {
+    // ===== 手机端逻辑 =====
+    if (!mobileIsTextPage) {
+      // 图片页 -> 文字页
+      mobileIsTextPage = true;
+      document.getElementById('book').classList.add('show-text');
+      const content = document.querySelector('.page-right .content');
+      if (content) content.scrollTop = 0;
+      
+      // 变成文字页后，按钮文字变成“上”和“下”
+      prevBtn.textContent = '上';
+      nextBtn.textContent = '下';
+    } else {
+      // 文字页 -> 下个故事图片页
+      goNextStory(); 
+    }
+  } else {
+    // ===== 电脑端逻辑（完全不变） =====
+    goNextStory();
+  }
+});
+
+// 点击上一页
+prevBtn.addEventListener('click', () => {
+  if (isMobile()) {
+    // ===== 手机端逻辑 =====
+    if (mobileIsTextPage) {
+      // 文字页 -> 当前故事的图片页
+      mobileIsTextPage = false;
+      document.getElementById('book').classList.remove('show-text');
+      
+      // 回到图片页，按钮改回“下”
+      prevBtn.textContent = '下';
+      nextBtn.textContent = '下';
+    } else {
+      // 图片页 -> 上个故事图片页
+      goPrevStory();
+    }
+  } else {
+    // ===== 电脑端逻辑（完全不变） =====
+    goPrevStory();
+  }
+});
 
 // 键盘快捷键
 document.addEventListener('keydown', (e) => { 
@@ -5688,18 +5841,7 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'ArrowRight') goNextStory(); 
 });
 
-// 手机端滑动切换
-let touchStartX = 0, touchStartY = 0;
-document.body.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive: true });
-document.body.addEventListener('touchend', (e) => {
-  if (!readerView.classList.contains('hidden')) {
-    const dx = e.changedTouches[0].clientX - touchStartX; const dy = e.changedTouches[0].clientY - touchStartY;
-    // 只有当滑动距离够长，且横向大于纵向才触发
-    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { 
-      if (dx < 0) goNextStory(); else goPrevStory(); 
-    }
-  }
-}, { passive: true });
+
 
 renderHome();
 </script>
