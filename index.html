@@ -1,0 +1,5707 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>专属复古故事书</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  
+  :root {
+    --desk-bg: radial-gradient(circle at center, #3a2e26 0%, #1a1512 100%);
+    --paper-bg: #ebd6b0;
+    --paper-thickness: #cdb187;
+    --ink-color: #3e2a1e;
+    --ink-light: #7a5d40;
+    --btn-bg: rgba(255,255,255,.1);
+    --btn-text: #d1c8b8;
+    --btn-border: rgba(255,255,255,.2);
+  }
+
+  body.dark-mode {
+    --desk-bg: radial-gradient(circle at center, #111 0%, #000 100%);
+    --paper-bg: #2a241d;
+    --paper-thickness: #1f1a14;
+    --ink-color: #a89582;
+    --ink-light: #7a6959;
+    --btn-bg: rgba(255,255,255,.05);
+    --btn-text: #888;
+  }
+
+  body {
+    font-family: "Kaiti SC", "STKaiti", "KaiTi", "Songti SC", serif;
+    background: var(--desk-bg); 
+    height: 100vh; overflow: hidden;
+    color: var(--ink-color);
+    transition: background 0.5s;
+    user-select: none;
+  }
+
+  /* 顶部按钮 */
+  .theme-btn, .back-btn, .music-btn {
+    position: fixed; top: max(12px, env(safe-area-inset-top)); z-index: 100;
+    font-family: inherit; font-size: .9rem; border-radius: 50px;
+    border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-text);
+    cursor: pointer; backdrop-filter: blur(8px); transition: .3s;
+  }
+  .theme-btn { right: 16px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .music-btn { right: 70px; width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; }
+  .back-btn { left: 16px; padding: .5rem 1.2rem; }
+  .hidden { display: none !important; }
+
+  /* 视图切换 */
+  .view { 
+    position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+    transition: opacity .4s, transform .4s; 
+  }
+  .view.hidden { opacity: 0; pointer-events: none; transform: translateX(-30px); }
+
+  /* 首页左右滑动 */
+  .home-scroll-container {
+    width: 100%; height: 100%; overflow-x: auto; overflow-y: hidden; 
+    display: flex; align-items: center; padding: 0 10vw;
+    scroll-behavior: smooth; -ms-overflow-style: none; scrollbar-width: none;
+  }
+  .home-scroll-container::-webkit-scrollbar { display: none; }
+  .slide-wrap { display: flex; flex-direction: row; gap: 2.5rem; align-items: center; width: max-content; padding: 20px; }
+  .series-card {
+    display: flex; flex-direction: column; align-items: center; gap: 15px;
+    flex-shrink: 0; cursor: pointer; opacity: 0; transform: translateX(100px); animation: slideIn .5s forwards;
+  }
+  .circle {
+    width: clamp(120px, 18vw, 180px); height: clamp(120px, 18vw, 180px); border-radius: 50%;
+    overflow: hidden; border: 4px solid var(--paper-bg); box-shadow: 0 15px 35px rgba(0,0,0,.6); position: relative; transition: transform 0.3s;
+  }
+  .circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .series-card:hover .circle { transform: scale(1.05); }
+  .series-name { font-size: 1.2rem; color: var(--btn-text); letter-spacing: 2px; text-shadow: 0 2px 5px rgba(0,0,0,0.5); white-space: nowrap; }
+  @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+
+  /* 目录页 */
+  .story-list { display: flex; flex-direction: column; gap: 1.2rem; width: min(85vw, 400px); max-height: 80vh; overflow-y: auto; padding: 10px; }
+  .story-list::-webkit-scrollbar { display: none; }
+  .story-list { -ms-overflow-style: none; scrollbar-width: none; }
+  .story-item {
+    font-size: 1.2rem; padding: 1rem 1.5rem; border-radius: 8px; background: var(--paper-bg);
+    border: 1px solid rgba(0,0,0,0.2); cursor: pointer; opacity: 0; transform: translateX(100px);
+    animation: slideIn .4s forwards; color: var(--ink-color); box-shadow: 0 5px 15px rgba(0,0,0,.5);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .story-item::before { content: "›"; font-size: 1.5rem; color: var(--ink-light); line-height: 1; margin-top: -3px;}
+
+  /* 书本样式 */
+  #reader { perspective: 2500px; justify-content: center; }
+  .book { 
+    position: relative; width: min(90vw, 1000px); height: min(80vh, 750px); 
+    display: flex; transform-style: preserve-3d; filter: drop-shadow(0 30px 40px rgba(0,0,0,0.8)); 
+  }
+  .book::before, .book::after {
+    content: ""; position: absolute; top: 6px; height: 100%; width: 50%; z-index: -1;
+    background-color: var(--paper-thickness);
+    background-image: repeating-linear-gradient(to bottom, rgba(0,0,0,0.05) 0px, rgba(0,0,0,0.05) 1px, rgba(255,255,255,0.05) 1px, rgba(255,255,255,0.05) 3px);
+    border-radius: 3px;
+  }
+  .book::before { left: -6px; box-shadow: -1px 1px 0 var(--paper-thickness), -2px 2px 0 var(--paper-thickness), -3px 3px 0 var(--paper-thickness), -4px 4px 0 var(--paper-thickness), -5px 5px 0 var(--paper-thickness), -6px 6px 0 var(--paper-thickness), -10px 10px 20px rgba(0,0,0,0.5); }
+  .book::after { right: -6px; box-shadow: 1px 1px 0 var(--paper-thickness), 2px 2px 0 var(--paper-thickness), 3px 3px 0 var(--paper-thickness), 4px 4px 0 var(--paper-thickness), 5px 5px 0 var(--paper-thickness), 6px 6px 0 var(--paper-thickness), 10px 10px 20px rgba(0,0,0,0.5); }
+
+  .page {
+    width: 50%; height: 100%; position: relative; background-color: var(--paper-bg);
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.08"/></svg>');
+    overflow: hidden; backface-visibility: hidden; box-shadow: inset 0 0 40px rgba(100, 70, 40, 0.2);
+  }
+  .page-left  { border-radius: 10px 0 0 10px; }
+  .page-right { border-radius: 0 10px 10px 0; }
+  .page-left::after { content: ""; position: absolute; right: 0; top: 0; width: 60px; height: 100%; background: linear-gradient(to left, rgba(20, 10, 5, 0.6), transparent); pointer-events: none; z-index: 5; }
+  .page-right::after { content: ""; position: absolute; left: 0; top: 0; width: 60px; height: 100%; background: linear-gradient(to right, rgba(20, 10, 5, 0.6), transparent); pointer-events: none; z-index: 5; }
+
+  /* 左侧图片 */
+  .carousel { position: relative; width: 100%; height: 100%; z-index: 1; background: var(--ink-light); }
+  .carousel img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 2s ease-in-out; }
+  .carousel img.active { opacity: 1; }
+  .dots { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); display: flex; gap: 10px; z-index: 8; }
+  .dots span { width: 8px; height: 8px; border-radius: 50%; background: rgba(255,255,255,.4); cursor: pointer; transition: .3s; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+  .dots span.on { background: #fff; transform: scale(1.3); }
+
+  /* 右侧文字（上下滑动） */
+  .page-right .content { 
+    padding: 50px 40px; height: 100%; display: flex; flex-direction: column; position: relative; z-index: 6; 
+    overflow-y: auto; scroll-behavior: smooth;
+  }
+  .page-right .content::-webkit-scrollbar { width: 4px; }
+  .page-right .content::-webkit-scrollbar-thumb { background: rgba(122, 93, 64, 0.3); border-radius: 2px; }
+  
+  .page-right h2 { font-size: 1.6rem; font-weight: normal; color: var(--ink-color); letter-spacing: 3px; text-align: center; margin-bottom: 20px; border-bottom: 1px dashed rgba(138,123,108,0.3); padding-bottom: 15px; flex-shrink: 0; }
+  .page-right p { font-size: 1.15rem; line-height: 2.4; color: var(--ink-color); text-align: justify; text-shadow: 0 0 1px rgba(62, 42, 30, 0.3); white-space: pre-wrap; }
+
+  /* 作者手记 */
+  .author-note-box {
+    margin-top: 40px; border: 1px dashed var(--ink-light); border-radius: 6px; padding: 12px 15px; width: 100%; text-align: center;
+    background: rgba(0,0,0,0.03); box-shadow: inset 0 2px 5px rgba(0,0,0,0.05); position: relative;
+    min-height: 75px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .author-note-box::before {
+    content: "作者手记"; position: absolute; top: -10px; left: 50%; transform: translateX(-50%);
+    background: var(--paper-bg); padding: 0 8px; font-size: 0.75rem; color: var(--ink-light); letter-spacing: 1px;
+  }
+  .author-note-text { font-size: 0.9rem; color: var(--ink-light); transition: opacity 0.6s ease-in-out; min-height: 1.5em; display: inline-block; line-height: 1.5; }
+
+  /* 3D翻书特效纸 */
+  .flip-page {
+    position: absolute; top: 0; right: 0; width: 50%; height: 100%; transform-origin: left center; transform-style: preserve-3d;
+    pointer-events: none; z-index: 20; transition: transform .8s ease-in-out; background-color: var(--paper-bg);
+    background-image: url('data:image/svg+xml;utf8,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="n"><feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23n)" opacity="0.08"/></svg>');
+    border-radius: 0 10px 10px 0; box-shadow: -15px 0 30px rgba(0,0,0,.2), inset 15px 0 20px rgba(0,0,0,.1); display: flex; align-items: center; justify-content: center; font-size: 2rem; color: var(--ink-light);
+  }
+  .flip-page.forward { transform: rotateY(-180deg); box-shadow: 15px 0 30px rgba(0,0,0,.2), inset -15px 0 20px rgba(0,0,0,.1); }
+
+  /* 底部按钮 */
+  .nav { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); display: flex; gap: 20px; align-items: center; z-index: 50; }
+  .nav button {
+    font-family: inherit; font-size: .95rem; padding: .6rem 1.8rem; border-radius: 50px; border: 1px solid var(--btn-border); background: var(--btn-bg); color: var(--btn-text); cursor: pointer; transition: .3s; backdrop-filter: blur(5px);
+  }
+  .nav button:hover { background: rgba(255,255,255,.2); }
+  .nav button:disabled { opacity: .3; cursor: not-allowed; }
+
+  /* 弹窗 */
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.6); backdrop-filter: blur(5px); display: flex; align-items: center; justify-content: center; z-index: 999; opacity: 0; pointer-events: none; transition: .3s; }
+  .modal-mask.show { opacity: 1; pointer-events: auto; }
+  .modal { background: var(--paper-bg); color: var(--ink-color); padding: 2.5rem 3rem; border-radius: 12px; text-align: center; transform: scale(.95); transition: .3s; box-shadow: 0 20px 50px rgba(0,0,0,0.8); }
+  .modal-mask.show .modal { transform: scale(1); }
+  .modal h3 { font-weight: normal; font-size: 1.5rem; margin-bottom: 10px; }
+  .modal button { padding: .6rem 2rem; border-radius: 50px; border: 1px solid var(--btn-border); background: var(--ink-color); color: var(--paper-bg); cursor: pointer; transition: .3s; font-family: inherit; }
+
+  /* 新手导引 */
+  .guide-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.75); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(5px); opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+  .guide-mask.show { opacity: 1; pointer-events: auto; }
+  .guide-box { background: var(--paper-bg); padding: 30px 40px; border-radius: 12px; text-align: center; color: var(--ink-color); border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 20px 50px rgba(0,0,0,0.8); animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+  @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .guide-box h3 { font-size: 1.4rem; margin-bottom: 15px; font-weight: normal; }
+  .guide-box p { font-size: 1rem; color: var(--ink-light); line-height: 1.8; margin-bottom: 20px; }
+  .guide-box button { background: var(--ink-color); color: var(--paper-bg); border: none; padding: 10px 30px; border-radius: 20px; font-size: 1rem; cursor: pointer; font-family: inherit; transition: 0.3s; }
+
+  /* 手机端适配 */
+  @media (max-width: 768px) and (orientation: portrait) {
+    .book { height: 82vh; width: 86vw; margin-left: 10vw; display: block; border-radius: 8px; }
+    .book::before, .book::after { display: none; } 
+    .page { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 4px 8px 8px 4px; box-shadow: -10px 10px 30px rgba(0,0,0,0.8); }
+    .page::after { content: ""; position: absolute; left: 0; top: 0; width: 20px; height: 100%; background: linear-gradient(to right, rgba(20, 10, 5, 0.8), transparent); pointer-events: none; z-index: 5; }
+    
+    /* 手机端图片占位在上，文字在下 */
+    .page.page-left { height: 35%; border-radius: 4px 8px 0 0; z-index: 6; }
+    .page.page-right { top: 35%; height: 65%; border-radius: 0 0 8px 4px; }
+    .page-left::after { display: none; }
+    .page-right::after { display: none; }
+    
+    .page-right .content { padding: 25px 20px; }
+    .page-right h2 { font-size: 1.4rem; margin-bottom: 15px; padding-bottom: 10px;}
+    .page-right p { font-size: 1.05rem; line-height: 2; }
+    
+    /* 隐藏手机端的3D纸 */
+    .flip-page { display: none !important; }
+
+    /* 手机端切换故事用淡入淡出 */
+    .page-right .content.anim-next { animation: mobileInNext .4s ease-out forwards; }
+    .page-right .content.anim-prev { animation: mobileInPrev .4s ease-out forwards; }
+    @keyframes mobileInNext { from { opacity: 0; transform: translateX(30px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes mobileInPrev { from { opacity: 0; transform: translateX(-30px); } to { opacity: 1; transform: translateX(0); } }
+    
+    .home-scroll-container { padding: 0 5vw; }
+    .slide-wrap { gap: 1.5rem; }
+  }
+</style>
+</head>
+<body>
+
+<button class="music-btn" id="musicBtn" title="播放/暂停音乐">🎵</button>
+<button class="theme-btn" id="themeBtn" title="切换明暗">🌙</button>
+<button class="back-btn hidden" id="backBtn">← 返回</button>
+
+<div class="view" id="homeView">
+  <div class="home-scroll-container" id="homeScroll">
+    <div class="slide-wrap" id="seriesWrap"></div>
+  </div>
+</div>
+
+<div class="view hidden" id="seriesView"><div class="story-list" id="storyListWrap"></div></div>
+
+<!-- 阅读页 -->
+<div class="view hidden" id="reader">
+  <div class="book" id="book">
+    <!-- 左页（电脑端大图，手机端顶图） -->
+    <div class="page page-left">
+      <div class="carousel" id="carousel"><div class="dots" id="dots"></div></div>
+    </div>
+    
+    <!-- 右页（文字上下滑） -->
+    <div class="page page-right">
+      <div class="content" id="scrollableContent">
+        <h2 id="storyTitle"></h2>
+        <p id="storyText"></p>
+        <div id="authorNoteContainer"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 底部按钮 -->
+<div class="nav hidden" id="navBar">
+  <button id="prevBtn">‹ 上一故事</button>
+  <button id="nextBtn">下一故事 ›</button>
+</div>
+
+<!-- 新手导引 -->
+<div class="guide-mask" id="guideMask">
+  <div class="guide-box">
+    <h3>📖 欢迎阅读</h3>
+    <p>点击首页圆圈选择系列。<br>进入后，可以上下滑动阅读全文，<br>点击底部按钮切换故事。</p>
+    <button id="guideBtn">开始阅读</button>
+  </div>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal-mask" id="modalMask">
+  <div class="modal">
+    <h3>阅读完毕</h3>
+    <p id="modalText">已无更多内容</p>
+    <button id="modalOk">合上书本</button>
+  </div>
+</div>
+
+<script>
+// ==========================================
+// 🌟 你的 11 个系列骨架
+// ==========================================
+const seriesData = [
+  {
+    name: "艾斯", 
+    cover: "https://imgbed.heliar.top/i/y_1oCDMhzZvCb4E0_IMG_2716.jpg",
+    stories: [
+      {
+        title: "1.永夜与朝光",
+        images: ["https://imgbed.heliar.top/i/y_1oCDMhzZvCb4E0_IMG_2716.jpg","https://imgbed.heliar.top/i/cJ6AltKiMJLdZc2h_IMG_2717.jpg","https://imgbed.heliar.top/i/ptQ4JDqRNd8QUrCD_IMG_2718.jpg","https://imgbed.heliar.top/i/40WiWngXmJ_yW2or_IMG_2719.jpg","https://imgbed.heliar.top/i/YLE3cUWcRfpWt5IB_IMG_2722.jpg","https://imgbed.heliar.top/i/k8FyMbuKGyTrlv2j_IMG_2723.jpg","https://imgbed.heliar.top/i/oOrf7K5gY9CGWaUk_IMG_2724.jpg"],
+        content: `银剑的冷光还残留在指尖，艾斯曾是王国最锋利的猎魔人。
+
+他生于永夜横行的时代，古堡里的吸血鬼成群肆虐，阴影爬满城镇街巷，百姓在恐惧里苟延残喘，整个国家动荡不安。他奉命入宫护驾，第一次见到她——世人都称她公主。
+
+她没有皇室高高在上的骄矜，会蹲在宫墙下抚摸受伤的流浪猫，会为受灾的流民悄悄打开国库粮仓。艾斯一身猎魔人留下的伤痕，性子冷硬沉默，却在日复一日的守护里，无可救药地爱上了这位公主。
+
+战火愈演愈烈，吸血鬼大军压境，城池接连陷落，子民流离失所，死亡的阴影笼罩整片国土。猎魔人的银弹与利刃，在古老的吸血鬼王族面前节节败退，所有办法都试过，依旧挡不住暗夜侵袭。
+
+摆在艾斯面前的，只剩下唯一一条路。
+
+唯有转化，才能获得足以抗衡魔物的力量。
+
+深夜的古堡地下室，空气阴冷潮湿。艾斯摘下佩戴多年的猎魔人徽章，主动向吸血鬼王族献上自己。尖牙刺破脖颈的瞬间，灼烧般的剧痛席卷全身，属于人类的血肉，一点点被暗夜之力改写。他舍弃人类的身份与过往，成为强大的吸血鬼，换来能够横扫作乱族群的力量。
+
+他凭借新生的暗夜之力，率军平息吸血鬼暴乱。厮杀持续数月，鲜血浸透荒原，动乱终于落幕。硝烟散尽，王国重归安宁，百姓得以喘息，拥有了期盼已久的一世安康。
+
+可吸血鬼，永远不能触碰日光。
+
+公主是民心所向，是王国唯一合该端坐王座的人。只要艾斯留在她身边，暗夜的诅咒便会如影随形。臣民会永远忌惮他吸血鬼的身份，流言会缠绕公主，她的王位永远无法安稳。
+
+艾斯独自站在城堡最高的露台，清晨第一缕朝阳越过远山，缓缓漫上露台。
+
+他望向宫殿下方，子民奔走欢笑；望向远处宫殿，即将戴上王冠的公主。
+
+他打赢了战争，护住了所有人，唯独不能留在心爱的人身边。
+
+风掀起他褪色的猎魔人斗篷。他没有后退，静静迎向铺洒而来的日光。
+
+皮肤最先泛起白雾，一点点灼烧碎裂，身形缓缓消融。力量在日光下飞速瓦解，他最后望向王宫的方向，眼底藏着那句永远没能说出口的爱意。
+
+他亲手换来国泰民安，亲手将公主护上王座。
+
+日光缓缓吞噬他的轮廓，最后一点身影消融在晨光里。
+
+从此世间再无猎魔人艾斯，也无暗夜吸血鬼。王国迎来长久和平，百姓世代称颂公主的贤明。
+
+没有人知道，这盛世安稳，是艾斯以永生与性命，献祭换来的结局。
+
+不要记挂我，若日后看见朝阳，就当，是我最后一次拥抱你。—艾斯`,
+                authorNote: [
+          "1、麢见到了成为女王的公主，公主已经不再年轻。",
+          "她盯着麢慌了神想向前＂是你回来了吗？＂",
+          "随后又像是意识到了什么，收回手后退了一步喃喃自语＂不……你不是他…他不会回来了…他再也不会回来了…他＂",
+          "2、公主＂他从不会像你这般冷漠神情看着我。＂ ＂你不是他。＂",
+          "3、公主＂他死在了我最爱他的那年。＂",
+          "4、公主喜欢吃甜食，吃甜食会牙疼。她一口又一口往嘴里塞那些甜食，来不及咽，又继续塞，像是麻木的机械一样。",
+          "＂以前我偷吃的时候他总会出现＂",
+          "＂为什么我现在吃了那么多，他还不出现＂",
+          "5、觉醒了的艾斯怀里抱着已经老去的公主，公主就这样在他怀里离去。",
+          "公主说＂上辈子是我看着你离开，这次我可以先离开了＂",
+          "＂艾斯＂ 我爱你，那三个字轻飘飘的。",
+          "艾斯的身形顿了顿，头抵在她的发顶，抱着她的手紧了又紧，肩头颤抖。那是艾斯在强忍着哽咽，一滴泪落下：＂我也是。＂",
+          "6、艾斯留下来的一件东西，是他亲手为公主准备的婚纱。",
+          "最后公主要嫁人前夕，漫无目的不知怎的就走到了艾斯的故居。推开了一扇暗门后，那件婚纱就在衣架上，耀耀生辉的立在公主的眼前。"
+        ]
+      }
+    ]
+  },
+  {
+    name: "沈司", 
+    cover: "https://imgbed.heliar.top/i/pE7HCOf_WdkstX5b_IMG_2732.jpg",
+    stories: [
+      { title: "1.崖烬", images: ["https://imgbed.heliar.top/i/vQn3suSwlAtZVnBR_IMG_2725.jpg",
+      "https://imgbed.heliar.top/i/7x-l7aQ9v1He6GFy_IMG_2726.jpg",
+"https://imgbed.heliar.top/i/Vys44wjmcElchXyt_IMG_2727.jpg",
+"https://imgbed.heliar.top/i/hY8zVr3oRvQxDclL_IMG_2728.jpg",
+"https://imgbed.heliar.top/i/4-haGKC6dYBZ83Xw_IMG_2729.jpg",
+"https://imgbed.heliar.top/i/54_-hVm2HDR_j7Pb_IMG_2730.jpg",
+"https://imgbed.heliar.top/i/QNXpS_3Vrbzg1689_IMG_2731.jpg",
+"https://imgbed.heliar.top/i/pE7HCOf_WdkstX5b_IMG_2732.jpg",
+"https://imgbed.heliar.top/i/RV0ZIDhVb4bVMgAw_IMG_2733.jpg",
+"https://imgbed.heliar.top/i/rnA8FJ8A0BVxi5wP_IMG_2734.jpg"], content: `崖风如刃，割裂云海，刮得整座山巅都在轰鸣震颤。
+
+万丈深渊之下，黑雾翻涌不息，死寂幽暗，足以吞尽人间所有情爱与温柔。
+
+今日，是他沈司，终局登顶的日子。
+
+数年筹谋，步步嗜血，机关算尽，血染满途。他踩着尸山血海走来，斩断羁绊，舍弃温情，亲手铺就了一条通往至尊权位的帝王路。
+
+而她，是他这场滔天霸业里，唯一被精心饲养、假意偏爱、全程演戏的牺牲品。
+
+从初见那一刻起，没有心动，没有破例，没有半分情不自禁。
+
+他看她的眼神，从来不是爱慕，而是打量、权衡、利用。
+
+他知她心性纯粹，知她用情至深，知她最易心软，便精准拿捏她所有软肋。
+
+他演温柔，演深情，演许诺，演偏爱。
+
+雨夜撑伞、寒夜温茶、危难护她、月下盟誓。
+
+岁岁年年，朝夕温存，全是刻意伪装，全是帝王权术，全是虚假牢笼。
+
+他需要她独一无二的血脉破局，需要她的存在成就万世基业。
+
+于他而言——
+她不是心上人，只是工具。
+不是余生，只是祭品。
+
+可她一无所知。
+
+她捧着一腔滚烫赤诚，飞蛾扑火般沉溺在他编织的温柔骗局里。她把他当作乱世唯一救赎，当作此生归宿。她毫无保留、倾尽所有，将真心、信任、温柔、余生，全数奉上。
+
+她爱得卑微、热烈、坦荡、纯粹。
+
+她以为双向奔赴，殊不知，从头到尾，只是她一人的情深意重，换来他冷眼旁观的步步收割。
+
+如今大局落定，江山在手，权倾天下。
+
+他不需要演戏了。
+
+山巅狂风肆虐，他立于崖前，墨袍猎猎，眉眼冷硬如千年寒玉，没有一丝温度，没有半分旧情。
+
+他看着眼前泪流满面、满心依赖他的姑娘，语调平淡，凉薄刺骨，字字如刀凌迟人心：
+
+“演够了，也累了。”
+
+“这场戏，该结束了。”
+
+她身子猛地一僵，血液瞬间冻结，指尖剧烈颤抖，难以置信地望着他。
+
+他眼神淡漠，毫无波澜，甚至带着一丝居高临下的漠然与嘲弄：
+“你当真以为，我会爱你？”
+“我护你、哄你、陪你、纵容你，从来只为利用你的血脉，成就我的江山。”
+“你所珍视的一切温柔，不过是我为达目的，施舍的假象。”
+
+每一个字，都冷得不带一丝人气。
+
+她喉咙发紧，心口剧痛如裂，眼泪瞬间崩决，顺着苍白脸颊疯狂滚落。
+
+她踉跄后退，声音破碎嘶哑，带着最后一丝卑微到极致的奢望：
+“那……那些深夜相伴？那些危难相护？那些岁岁诺言？……全部都是假的吗？”
+
+“全假。”
+
+他答得干脆利落，毫无迟疑，眼底没有一丝一毫动摇。
+
+数年朝夕相处，她的温柔、她的赤诚、她的偏爱，在他此刻冰冷的心智里，通通不值一提。霸业在前，情爱最是廉价无用。
+
+她泣不成声，浑身颤抖：
+“你哪怕……有一瞬间心动过我？哪怕一瞬？”
+
+他垂眸，俯视她崩溃落泪的模样，薄唇吐出最残忍、最诛心的判决：
+
+“从未。”
+“从头到尾，你于我，无用时可弃，有用时可留。仅此而已。”
+
+这句话，彻底碾碎了她最后一丝念想。
+
+她凄然笑起，笑声凄厉破碎，混在呼啸山风里，悲凉得让人窒息：
+“原来如此……原来我数年情深，满腔真心，不过是你登顶路上，一场廉价又可笑的消遣。”
+
+“沈司。”
+“我不恨你野心滔天，不恨你谋夺天下。”
+
+她抬起泪眼，死死看着眼前这个她爱到骨血里的男人，字字泣血，痛彻骨髓：
+“可我恨你骗我！”
+“你要权要势，大可直言掠夺，我甘愿赴死！”
+“可你为什么要骗我真心？！”
+“你亲手给我温柔，亲手许我余生，亲手让我沦陷沉沦！”
+“等我倾尽所有、爱到无可救药，你再亲手告诉我——一切皆是骗局！”
+“沈司，你何其凉薄，何其残忍！”
+
+面对她撕心裂肺的控诉，他神色依旧冰冷僵硬，心如磐石，不为所动。
+
+他语气冷漠，带着帝王无情的绝对理智：
+“乱世成王，本就无情。情爱累赘，本就该弃。”
+“是你太蠢，信了不该信的温柔。”
+
+蠢。
+
+一字落地，彻底压垮了她最后的脊梁。
+
+是啊，是她太蠢。
+
+蠢到把一场精心算计的骗局，当成此生唯一的深情。
+
+眼底最后一点光亮，彻底熄灭。
+
+爱意死了，执念死了，心彻底死了。
+
+世间再无半分值得她留恋。
+
+她缓缓后退，一步步退至崖边，身后是万丈深渊，身前是负她彻骨的爱人。
+
+风扬起她散乱的发丝，泪痕斑驳，脸色惨白。
+
+她望着他，再无爱意，再无不甘，只剩一片死寂的荒芜：
+
+“既然我真心廉价，既然我余生累赘。”
+“那我归还你所有算计，成全你的万里霸业。”
+“从今往后，你君临天下，千秋万代。”
+“我坠渊寂灭，从此人间，再无牵绊。”
+
+话音落。
+她闭眼，身躯轻轻一仰。
+
+决然、利落、毫无留恋。
+
+像一片凋零碎雪，纵身坠入无尽黑雾深渊。
+
+刹那之间，天地骤停。
+
+狂风骤停，风声死寂。
+
+沈司整个人如遭雷击，浑身僵硬在原地。
+
+前一秒还冷硬如铁、理智至上、毫无波澜的心脏，骤然炸裂。
+
+所有的冷漠、算计、无情、帝王心智，在她坠落的那一瞬间，尽数崩塌、碎成齑粉。
+
+他一直以为自己在演戏。
+
+他以为自己掌控全局，心如止水，从不动情。
+
+可原来——
+
+他演了数年无情，却早已在无数个温柔朝夕里，悄悄爱她入髓，深入骨血，刻入神魂。
+
+只是他野心蒙心，权欲蔽眼，亲手压制、亲手否认、亲手掩埋。
+
+直到这一刻，她没了。
+
+永远没了。
+
+那个满眼是他、疼他信他、为他倾尽所有的姑娘，被他亲手一句句诛心话语，逼死在了他登顶的这一天。
+
+极致的恐慌、悔恨、窒息、剧痛，瞬间席卷五脏六腑，撕裂四肢百骸。
+
+他瞳孔猩红，指尖剧烈颤抖，浑身冰冷，呼吸剧痛到几乎昏厥。
+
+可多年冷酷成性的本能，让他嘴硬到极致，喉咙艰涩挤出一句违心至极、冰冷至极的妄语：
+
+“……死了，也好。”
+
+这句话刚落。
+
+滚烫泪水，瞬间砸落。
+
+他疯了。
+
+彻底疯魔。
+
+好什么好！
+
+一点都不好！
+
+他赢了天下，赢了权柄，赢了世人仰望的至尊王座。
+
+可他输掉了这辈子唯一爱过、唯一暖过他荒芜人生的人。
+
+万里江山，千秋霸业，无上权位——
+
+瞬间变得肮脏、空洞、一文不值。
+
+他不要天下了。
+
+他只要她活过来。
+
+只要那个温柔唤他、满心向他、真心待他的姑娘，再看他一眼。
+
+巨大的悔恨将他彻底吞噬，方才高高在上的帝王，瞬间溃不成军，狼狈不堪。
+
+他喉间溢出破碎嘶哑的呜咽，眼底是濒临疯狂的赤红。
+
+他算尽人心，算尽天机，算尽天下棋局。
+
+唯独算错了自己。
+
+算错了，他早已经爱她胜过江山，胜过霸业，胜过苍生万物。
+ 
+狂风再度呼啸而起。
+ 
+他再也没有半分迟疑，抛弃万里河山，舍弃至尊王座，撕碎一身帝王冷骨。
+ 
+一步踏出，纵身跃下万丈深渊。
+ 
+下坠的风声里，是他撕心裂肺、泣血追悔的疯魔低语：
+ 
+“是我蠢……是我无情……”
+“阿晚，别走……等等我……”
+“江山无用，霸业皆空……我只要你……”
+“我赢了天下棋局，却输了此生唯一挚爱……”
+
+可深渊之下，并无重逢。
+ 
+命运连同赴黄泉的慈悲，都不肯施舍给他们。
+
+又或许这是命运，给沈司最大的惩罚。
+
+沈司并未随她一同归于尘土。
+ 
+崖底乱石挂住他的衣袍，他苟活下来，一身伤痕，却求死不能。
+ 
+兜兜转转，他终究还是坐上那把倾尽半生谋划得来的帝王宝座。
+ 
+朝堂百官俯首，四海疆域归降，史书将书写他盖世功绩，后世会称颂他平定乱世的赫赫威名。
+ 
+只是无人知晓，这位万人之上的帝王，夜夜被梦魇缠绕。
+ 
+梦里永远是崖边那一幕，是她泪流满面绝望破碎的眉眼，是她纵身一跃时，那道决绝坠落的身影。
+ 
+他坐拥锦绣山河，宫殿万千，却寻不到一缕属于她的气息。
+ 
+他算尽世间万千人，利用真情，编织骗局，机关算尽夺得天下，到头来，只落得一身永不能消解的罪孽。
+ 
+他报得了家国仇，得了世间权，却赎不完对她欠下的情。
+ 
+这便是宿命的嘲弄。
+ 
+求死，不得死；求重逢，不得相见。
+ 
+活着，才是对他最残酷的刑罚。
+ 
+岁岁山河更迭，年年月圆月缺。
+ 
+往后漫长的岁岁千秋，他将独自守着这片他用她的真心换来的万里江山。
+ 
+权柄在握，孤冢在心。
+ 
+世间再无阿晚，再无那个会待他以赤诚温柔的姑娘。
+ 
+他赢了棋局，赢了乱世，赢了天下。
+ 
+却输给了自己的野心，输给了迟来的爱意。
+ 
+纵掌人间生死，却再也唤不回一个被他亲手毁掉的人。
+ 
+史书洋洋万卷，写尽他千秋功业。
+ 
+写不尽，帝王心底，那一处永世流血的伤疤。
+ 
+至高王座，是他的功业，亦是他永生永世的囚笼。
+`},
+      { title: "2.神堕", images: ["https://imgbed.heliar.top/i/EX9dOoTew3sBsA_1_IMG_2778.jpg"], content: `沈司身后一边是漆黑如墨的堕落羽翼，另一边羽翼的羽毛已经大片灰白零落，正在被力量一点点消融。
+他双目轻阖，十指紧紧合十抵在身前，金色如同熔泪的液体，顺着眼尾缓缓淌下，划过下颌。
+那不是眼泪，是他本源神力溃散的征兆。
+
+教堂四下安静得只剩烛火噼啪的轻响。
+
+为了换回她濒死的性命，他以自身羽翼、神格本源作为献祭，将自己千年修为尽数渡给那个人。
+
+羽毛正一片接一片，无声从他肩头簌簌坠落，飘落在冰冷的石砖地面。
+半边黑羽尚且浓烈，另半边羽翼已经失去光泽，枯败颓靡。
+
+他仰起脖颈，长长的睫毛轻颤，没有痛苦嘶吼，只有一种近乎虔诚的悲悯。
+
+“神爱世人，可我从不在乎苍生。”
+
+嗓音低沉沙哑，带着神力不断流失带来的虚弱，气息微微发颤，合十的指节因为用力泛出青白。
+
+“我所有的虔诚，所有的祷告，从来都不为神明。”
+
+金色的神泪还在不断往下淌，属于他的力量正在飞速剥离身体，骨骼深处传来缓慢撕裂般的钝痛，羽翼的重量一点点从肩头消散。
+
+他本是受万神敬仰的存在，本该永生伫立圣殿。可遇上她之后，信仰便彻底偏移。
+
+世间的教义、永恒的寿命、至高无上的权柄，于他而言，全部抵不过她的一缕呼吸。
+
+“我舍弃羽翼，消磨神格，散尽千年本源。”他眼睑依旧闭合，唇角浮起一抹极淡、凄然却温柔的笑意，“不求神迹，不求来生，只求她能够好好活下去。”
+
+烛火摇晃，将他孤绝的身影拉长投射在斑驳墙壁上。
+
+颈间的十字架随着他微弱的呼吸轻轻碰撞，叮当作响，像是在为这场背弃神明的奉献，奏响哀戚的挽歌。
+
+大片灰白羽翼继续崩解、化作细碎光点消散在空气，就连那一双漆黑的翅膀，光泽也在缓缓褪去。他明明正在走向消亡，合十祈祷的姿态，却依旧虔诚。
+
+“若要降下责罚，尽数落在我一人身上就够了。”
+
+“放过她。”
+
+他将自己全部献祭于此，把生的希望尽数留给心爱之人，甘愿坠入万劫不复。`, authorNote: ["救得了天下苍生却救不了她，算什么神明。"] },
+{ title: "3.蛊", images: ["https://imgbed.heliar.top/i/TIdcR6Z4Oz1ytSuB_%E6%88%AA%E5%B1%8F%202026-11-18%2023.26.06.png",
+"https://imgbed.heliar.top/i/CifuFdTxAZtA9gQM_%E6%88%AA%E5%B1%8F%202026-11-19%2020.25.45.png",
+"https://imgbed.heliar.top/i/mPooa6Ay42oPIWvC_%E6%88%AA%E5%B1%8F%202026-11-19%2020.26.13.png",
+"https://imgbed.heliar.top/i/6hriuaEflNU7dohZ_%E6%88%AA%E5%B1%8F%202026-11-19%2020.26.39.png",
+"https://imgbed.heliar.top/i/QCWAj1qdWtviltP1_%E6%88%AA%E5%B1%8F%202026-11-19%2020.27.03.png",
+"https://imgbed.heliar.top/i/O1Nt7c0C4ZsmJ_FE_IMG_2846.jpg"], content: `＂为何偏不能爱我？＂
+＂既然如此＂
+＂那我偏要得到＂
+
+他生来偏执寡情，坐拥蛊术万千、掌控生死祸福，唯独对凡间少女一见沉沦。
+她本是寻常凡人，心有所属、心怀暖阳，无意招惹幽暗苗疆。
+求而不得，万般执念。
+他以本命情蛊缚她身骨，强行留住不属于自己的真心。
+蛊入血肉，情困半生，一蛊锁终身，相爱是囚，心动是痛。
+
+他执掌万蛊，手握权术，可驭万物、可断生死，却驭不住她的心意，只能以蛊为笼，偏执囚禁挚爱。
+
+她无心蛊术、无争权谋，本该拥有圆满寻常情爱，却被苗疆少主的偏执爱意困住，身中情蛊，身心不由己，爱不能随心，岁岁受蛊毒情丝折磨。
+ 
+苗疆万蛊，可蛊苍生，可乱天机。
+唯独蛊不住，一人真心。
+ 
+他是生于幽暗山林的苗疆少主，
+执掌万蛊，心性偏执阴狠，无情无念。
+直至遇见人间明媚的她，一眼沉沦，万劫不复。
+ 
+她本是寻常凡间女子，
+心有良人，向往烟火寻常，岁岁安然。
+ 
+求而不得，念而无归。
+他以本命情蛊为笼，缚她身骨，锁她余生。
+强行将人间暖阳，囚入无边幽暗蛊林。
+ 
+蛊入血肉，情困余生。
+她身中情毒，爱不由心，岁岁煎熬，日日遗憾。
+他手握朝夕，空守身旁，执念成痴，终生孤寂。
+
+一蛊错终生，一念误两人。
+他赢了相守，输了真心。
+她得了羁绊，失了余生。
+终究是，强求的情爱，最是蚀骨虐心，万般徒劳。`, authorNote: [
+          "＂假象又如何，她属于我就好。＂",
+          "沈司：＂我就是要得到你，拥有你，占据你。你永远也别想逃离我。＂",
+          "解蛊男主死掉才行，因为他本命情蛊，反正就不死",
+          "女主不爱男主，她的爱是因为男主下了蛊。",
+          "女主想死死不了，除非她杀了男主，但是她根本不可能做不到。",
+          "她有个喜欢的人，让我们顾客串一下",
+          "顾受伤了，只有他能救，他就让女主吃掉那个蛊，他就救",
+          "沈司只是疯，不坏，他救了顾的，而且救顾还差点死掉。"
+        ]},
+        { title: "4.失温", images: ["https://imgbed.heliar.top/i/7uXJr52cRWoKydrc_%E6%88%AA%E5%B1%8F%202026-11-19%2015.29.50.png",
+"https://imgbed.heliar.top/i/2M6ZB2M2OngImwJo_%E6%88%AA%E5%B1%8F%202026-11-19%2015.31.34.png",
+"https://imgbed.heliar.top/i/cypOvmGx9YA1JX-D_%E6%88%AA%E5%B1%8F%202026-11-19%2015.32.18.png",
+"https://imgbed.heliar.top/i/FFIvPLVk-4alM1iE_%E6%88%AA%E5%B1%8F%202026-11-19%2015.32.54.png",
+"https://imgbed.heliar.top/i/k3freLWpGBp2W_Xc_%E6%88%AA%E5%B1%8F%202026-11-19%2015.33.33.png",
+"https://imgbed.heliar.top/i/s95ovbZ_2n1KLvdO_%E6%88%AA%E5%B1%8F%202026-11-19%2015.33.59.png",
+"https://imgbed.heliar.top/i/ahkchxm-M220paci_%E6%88%AA%E5%B1%8F%202026-11-19%2015.34.43.png",
+"https://imgbed.heliar.top/i/JbC9TlqZ0KyAcA8u_%E6%88%AA%E5%B1%8F%202026-11-19%2015.35.26.png",
+"https://imgbed.heliar.top/i/8hvHUdaZiQcnyhQ__%E6%88%AA%E5%B1%8F%202026-11-19%2015.36.52.png",
+"https://imgbed.heliar.top/i/Gz62kokj3WaQ-Yu0_%E6%88%AA%E5%B1%8F%202026-11-19%2015.37.50.png","https://imgbed.heliar.top/i/_cioAWRGSta88ros_%E6%88%AA%E5%B1%8F%202026-11-19%2015.30.21.png","https://imgbed.heliar.top/i/fjCPNG68z6agj-5i_%E6%88%AA%E5%B1%8F%202026-11-19%2015.29.09.png","https://imgbed.heliar.top/i/5xI2jrFZmW_UNCZo_%E6%88%AA%E5%B1%8F%202026-11-19%2015.31.01.png"], content: `他们成婚这天，是这座城市最后一个白昼。
+ 
+礼堂灯火温柔，红绸轻垂，白纱曳地。
+苏晚站在满目璀璨里，眼底盛着滚烫的爱意，望着她的新郎。
+ 
+沈司一身利落黑西装，眉眼温润，温柔得足以倾覆余生所有岁月。
+他伸手轻轻扣住她微凉的指尖，嗓音郑重而缱绻：
+“晚晚，今日娶你。此生护你平安，予你余生无忧，我说到做到。
+ 
+苏晚眼眶微热，轻轻回握：“沈司，我嫁你，生生世世，不离不弃。”
+ 
+神圣的誓词还未落尽，人间骤然倾覆。
+
+窗外晴空炸裂，凄厉的嘶吼贯穿街巷，末日毫无征兆降临。
+未知丧尸病毒瞬间席卷全城，繁华闹市顷刻沦陷。
+惨叫声、崩塌声、异化怪物的嘶吼铺天盖地，不绝于耳。
+温暖的婚礼殿堂，转瞬沦为人间炼狱的一隅。
+ 
+宾客四散奔逃，慌乱踩踏，鲜活的生命在片刻之间，沦为没有意识的行尸走肉。
+ 
+满城死寂，遍地荒芜。
+ 
+密密麻麻的失控尸潮冲破围墙，狰狞嘶吼着朝礼堂扑来。
+所有杀机，直直对准了手无寸铁、身着白纱的苏晚。
+ 
+她吓得浑身僵硬，指尖冰凉，下意识缩在原地，连呼吸都在颤抖。
+
+前路是漫天嗜血怪物，身后是无路可退的绝境。
+ 
+那一刻，沈司没有一秒犹豫。
+ 
+他猛地转身，将颤抖的少女死死、死死护在身后。宽厚的脊背，替她扛住了整个崩塌的人间。
+ 
+“晚晚，别怕。”
+ 
+他声音依旧温柔，稳得让人心疼，像是还在兑现婚礼的誓言。
+ 
+没有武器，没有退路，数以百计的利爪獠牙狠狠撕裂他的西装，啃咬他的皮肉。
+滚烫的血瞬间浸透整洁的西装，密密麻麻的伤口狰狞可怖。
+ 
+无解的丧尸病毒，顺着伤口疯狂侵蚀血脉，蚀骨剧痛席卷全身，灼烧他的意识、碾碎他的人性。
+ 
+苏晚埋在他怀里。
+看着他孤身挡下所有致命伤害。
+看着他脊背血肉模糊。
+哭得近乎窒息：
+“沈司！放开我！”
+＂你会被感染的＂
+＂我们一起跑好不好！”
+ 
+他脊背紧绷，痛到身躯微颤，却半步不退。
+ 
+“跑不了了。”
+他气息渐乱，体温飞速变冷，意识开始溃散，却用尽最后一丝力气轻声哄她：
+“我没关系……我会保护你的……。”
+ 
+末世定律，残酷公平。
+但凡沾染病毒者，必失心智，化身为凶，嗜血无度，泯灭所有人情过往，沦为彻头彻尾的怪物。
+ 
+所有人都是如此。
+ 
+唯独沈司，硬生生打破了宿命。
+ 
+极致的深爱凝成枷锁，死死锁住了他体内所有暴戾兽性。
+ 
+病毒蚕食他的肉身，异化他的骨骼，夺走他的体温、他的人间、他做人的所有资格。
+他成了半人半尸的异类，不老不死，不生不灭，永世沉沦黑暗，永世被困在这无人救赎的末世。
+ 
+可他唯独没有丢掉——爱她的本能。
+ 
+曾经温润干净的眼眸，大半被幽暗黑雾吞噬，只剩下一隅微光，只为苏晚而亮。
+精致的西服彻底碎裂破败，满身血污，满身伤痕。
+他再也没有人类的温度，指尖常年冰寒刺骨，心跳不再温热，呼吸不再滚烫。
+ 
+他成了幸存者恐惧、唾弃、避之不及的丧尸怪物。
+ 
+却依旧是那个会弯腰为她挡风、抬手为她斩险、穷尽一切护她周全的沈司。
+ 
+末世荒芜，众生皆恶，尸潮横行，人间再无善意。
+唯独这只坠入黑暗的异化丧尸，是整片废土唯一的温柔与神明。
+ 
+他靠着极致的意志力，压制噬血本能，远离所有活人，独自承受无尽孤独、无尽反噬、无尽非人煎熬。
+ 
+满城凶险，遍地杀机。
+他寸步不离守在她的身侧。
+所有扑向她的丧尸，他徒手斩杀；所有落在她身上的风雨，他尽数遮挡。
+幸存者畏惧他的异化模样，骂他非人非鬼，弃他、惧他、唾弃他。
+ 
+只有苏晚，从未退缩。
+ 
+她不惧他冰冷的肌肤，不惧他幽暗的眼眸，不惧末世颠沛，不惧世人非议。
+人人弃城逃亡，惜命自保。
+唯有她，始终一袭洁白婚纱，留在死寂空城，陪着早已不是人类的爱人。
+ 
+
+人间皆荒芜，唯你是纯白。
+我自愿沉沦，护你度余生。
+ 
+这是末世最狠、也最干净的爱：
+全世界我都可以屠戮殆尽，所有生灵我皆可舍弃。
+唯独你，
+此生——舍不得伤你分毫。
+
+
+彩蛋·《元宇宙》
+ 
+残阳沉落在崩坏的城市轮廓之后。
+ 
+废墟之间，沈司将苏晚护在臂弯，一人一尸，守着末世里仅存的纯白。
+ 
+而在这片时空之外，元宇宙的虚化边界悄然映着一道身影。
+ 
+那是个背对世界的神秘人，黑色西装被虚无的冷光勾勒出锋利轮廓。
+ 
+无人知晓他何时出现。
+ 
+直到那道背影缓缓侧过脸来，露出一张清冷淡漠的男性面容，眼底光芒微微一闪。
+ 
+——是他。`, authorNote: ["1. 沈司控制不住的时候就躲起来咬自己，晚晚哭着锤门，让沈司咬她吧，沈司只能让她离他远点",
+"2. 沈司想把晚晚送进幸存者庇护所，晚晚不愿意去，幸存者也不是全部愿意接受晚晚，因为沈司是丧尸中的异类，她们怕晚晚身上也有异变",
+"3. 变成丧尸，沈司遇见没有败落的玫瑰，也要摘下来送给晚晚，却被幸存者连射了好几枪",
+"4. 晚晚看到沈司的身影跑了过去，气愤又责备更是委屈的问他去哪里了，为什么要消失，是不是不要她了","沈司从残破的衣服里掏出保存完好的玫瑰递向她","晚晚愣了一瞬，压抑着本来就紧绷的情绪，眼泪瞬间滴落，颤抖着接过玫瑰","走近了这才发现沈司身上的伤痕累累","一瞬间泪水彻底决堤，哭着摸沈司身上的枪伤，却无从下手",
+"5. 沈司＂对不起，晚晚，我又把你送我的新衣服弄脏了＂",
+"6. 因为异变，沈司和普通人和普通丧尸都不一样，所以他有痛感，而且感官被放大了很多倍，他会疼，会非常疼","病毒强化了他的身体机能，伤会自愈，不会死，但会很疼，非常疼","他从来不会表露，受伤就强忍，他不想晚晚知道，不想看她心疼。不想看她落泪，不想看她难过",
+"7.世界观肯定不止丧尸和普通幸存者，还有实验人员，弄出来病毒的源头，在得知有沈司这个异变人员的时候，对他们展开了抓捕，用于做研究，他们只能逃亡，全世界皆与他们为敌"] } ,
+{ title: "(说书版)无题", images: ["https://imgbed.heliar.top/i/PnWPYanbna3rAFxc_IMG_2779.jpg",
+"https://imgbed.heliar.top/i/Qc_SArRtoxyKOTLW_IMG_2780.jpg",
+"https://imgbed.heliar.top/i/CBuCAmHQRaoJnvlc_IMG_2781.jpg",
+"https://imgbed.heliar.top/i/SySDKmmQdP_PHBE2_IMG_2782.jpg",
+"https://imgbed.heliar.top/i/WE-SnAi5YN-wAVbE_IMG_2783.jpg",
+"https://imgbed.heliar.top/i/vi2vP-L0wiBH5EXl_IMG_2784.jpg",
+"https://imgbed.heliar.top/i/84xBYFXctCA_wowL_IMG_2785.jpg",
+"https://imgbed.heliar.top/i/2BzzUhUc1SArSfO-_IMG_2786.jpg"], content: `女主是一个普通小姐养的红修炼成的妖，把小姐当成她最亲的人，入魔是因为亲眼看着小姐一家因为一些牵连被灭门，有点宏大这个故事，小姐喜欢上了一个仙君渣男，然后被渣男灭门，女主想复仇这样
+
+渣男仙君不是沈司，是沈司认识的，还是至高权位的，沈司没办法，只能阻止女主杀那个人
+
+因为那个仙君类似太子吧，那么说应该懂了
+
+没那么简单，女主也杀不了，只会白白枉送性命
+
+渣男是玩弄感情，然后抛弃，小姐父母上前理论直接被弄死了
+
+小姐也被他掐死了
+
+还是当着刚成人型没多久的女主掐死的小姐
+
+女主当时能活下来，是被男主救了，不然也魂飞魄散了
+
+沈司也看不惯渣男的所作所为，暗地里明面上也多次护着女主，和仙君不对付，但是君臣，渣男故意让沈司去对付女主
+
+女主刚开始很懵懂，刚幻化人形认识的沈司，没多久就突遭变故了
+
+因为沈司当时救了女主，女主从那个时候也怪沈司，怪他为什么前面不出手，为什么只救她，为什么不救小姐
+
+沈司说他没办法出手，保她一个已经是破例了，女主不理解也不想听解释，从这个时候开始就一直怪男主，也迁怒男主
+
+她们前面认识的时候，情丝就有异动了，沈司喜欢阿晚，但是他不知道自己喜欢，只觉得她很单纯，需要学很多东西才能保护她自己，所以他教了她很多东西，还送了她一个项链
+
+沈司被掏心也只是微微皱了皱眉，将她抱得更紧
+
+项链能让沈司感觉她的气息，她是不是好好活着，是不是有危险
+
+女主失忆后，还故意接近沈司，说爱他，沈司知道一切任由她骗
+
+阿晚也是从开始就喜欢沈司，懵懂的时候，因为她开始很单纯，所以她才会怪沈司，因为她觉得沈司也是她最亲近的人，却不救她的亲人
+
+后面情丝断了，女主也完全魔化了，所以她不记得男主，更不知道以前自己对他的感情
+
+沈司最后死了
+
+沈司死时，女主的项链也断了，女主不由自主留下来了眼泪，泪进了项链，唤醒了记忆
+
+沈司设计骗了渣男，并给他下了咒，渣男使不出全部法力，然后带到女主面前，渣男最后发现了沈司骗他，要鱼死网破，要杀了女主，沈司挡在了女主面前，被法术贯穿了身体，沈司说，他死了，这里再也没有人阻止女主，他也不用再违心护着不该护的人，女主终于可以自己手刃仇人了，传出去的也是沈司给渣男下的咒，所有结局他一人承担。
+
+记忆被唤醒了，沈司神形俱灭，项链也碎了
+
+he是天帝是一个好天帝，他知道了一切，也没有袒护自己的儿子，他出手解除了阿晚的魔性，因为他本身就很欣赏沈，所以他出手收回来了沈的一丝神魄，仙妖不可相恋，人可以，阿晚请求入凡尘，天帝成全了他们，做寻常夫妻，然后双双坠入轮回
+
+`, authorNote: ["看到红绳把阿晚和沈连在一起了吗，女主要把红线砍断",
+"因为男主不让她斩断，女主就说，斩不断那她胳膊不要了，要把胳膊砍了，男主用手抓住了她的剑，然后施法断了线",
+"因为对立吧，女主不要沈司了",
+"沈司就是仙君，水冰的",
+"女主是妖入魔",
+"最后he吧，男女主成为了普通人家，再次相遇，幸福的过完了一生",
+"女主入魔把男主的心掏了",
+"被掏的时候没反应过来",
+"掏了没掏死",
+"要杀他，入魔了，不记得他了"]} 
+    ]
+  },
+  {
+    name: "顾衍之", 
+    cover: "https://imgbed.heliar.top/i/B-X84LqzUvXsd-n-_IMG_2769.jpg",
+    stories: [ { title: "1.夜与玫瑰", images: ["https://imgbed.heliar.top/i/H-YXev_5r7VEutTn_IMG_2766.jpg",
+"https://imgbed.heliar.top/i/qEJKiPUcjjBrB8E-_IMG_2767.jpg",
+"https://imgbed.heliar.top/i/a3N0aMeEvkYRoUZe_IMG_2768.jpg"], content: `夜色浸在客厅浅灰的柔光里，空气还残留着酒会淡淡的香槟香气。
+
+顾衍之抱着她从宴会厅走回来，黑色西装外套还带着室外微凉的晚风。怀中人安安静静地靠在他臂弯，一身黑色丝绒长裙缀满珍珠链条，随着他迈步的动作，细碎的珍珠轻轻碰撞，发出几乎听不见的轻响。
+
+她喝多了。
+
+方才在晚宴上，她笑着一杯接一杯，眼底盛着朦胧的光，此刻醉意彻底席卷上来，沉沉睡了过去。长睫垂落，盖住往日灵动的眼眸，唇瓣还带着一点酒后的浅红，皮肤白得近乎通透，整个人软成一捧温软的云，毫无防备地倚在他怀里。
+
+顾衍之的手臂稳稳托住她的膝弯与后背，指腹不经意擦过丝绒面料，触感柔滑厚重。他低头，额头轻轻抵了抵她的发顶，视线落在她安静的睡颜上，平日里冷冽锐利的眉眼，此刻尽数化作温柔。他放轻脚步，生怕稍大一点的动静，就惊扰了这场醉酒的安眠。
+
+他慢慢屈膝半蹲，小心地将她放在自己膝头。她身子微微后仰，无意识地侧了侧脸，垂落的手还松松捏着一支晚宴上拿到的红玫瑰，暗红花瓣挨着她微凉的指尖。珍珠颈链顺着颈窝滑落，流苏坠子轻轻贴在锁骨。
+
+顾衍之抬手，指尖轻轻拂开散落在她脸颊旁的发丝。他拈起那支红玫瑰，小心翼翼放在她的肩窝，目光一寸寸描摹她沉睡的轮廓。没有恐慌，没有绝望，只有一种安静绵长的怜惜。
+
+他微微俯身，一只手护在她腰后，另一只手虚虚托着她的肩，看着她毫无力气向后轻仰的模样。玫瑰垂在她手边，暗红与黑丝绒交织，珍珠链条在柔光下泛着细碎莹润的光泽。
+
+她睡得很沉，呼吸轻浅均匀，全然放下了所有防备。
+
+顾衍之就这么静静坐着，抱着膝头醉酒熟睡的人。周遭世界喧嚣远去，偌大空间里，只剩下她平稳的呼吸，和他眼底藏不住的缱绻。他轻轻收紧手臂，将她抱得更稳一点，低声呢喃，轻得像一阵风：
+
+我陪着你。`} ,
+    { title: "2.糖与烟", images: ["https://imgbed.heliar.top/i/B-X84LqzUvXsd-n-_IMG_2769.jpg",
+"https://imgbed.heliar.top/i/cPqWwJkrRORbTH_x_IMG_2770.jpg",
+"https://imgbed.heliar.top/i/GZPMKCSbyr7sRqA5_IMG_2771.jpg"], content: `夜色沉敛，昏黄的落地灯光晕柔和，却照不彻顾衍之眼底积攒的阴郁。
+
+他慵懒倚在阳台门框，侧脸浸在浅浅光影里，眉眼淡漠疏离，带着与生俱来的高傲压迫感。指尖熟练摸出一支烟，随意叼在薄唇间，垂眸正要去摸口袋里的打火机，动作散漫又清冷。
+
+一道轻柔的身影忽然凑上前。
+
+女生趁他失神的瞬间，动作轻快又大胆，指尖精准抽走了他唇间的香烟。不等顾衍之蹙眉动容，一支清甜的棒棒糖已然取代烟草，轻轻抵入他微凉的唇齿之间。
+
+凛冽的烟草气息尽数散去，温柔的甜意漫上舌尖，冲淡了他周身的冷戾。
+
+顾衍之的动作骤然停滞，漆黑的眼眸缓缓抬起，狭长的眼尾微垂，半眸隐在阴影之中，慵懒的视线牢牢锁在身前的女生身上。乌黑的发丝微垂，衬得那张建模般精致的脸愈发清冷，含着糖果的唇瓣微微抿起，没有抗拒，也没有松开。
+
+他就这么静静含着糖，舌尖无意识轻抵着糖球，周身凌厉的气场悄悄柔和了几分。
+
+女生仰着小脸，望着他这副反差感十足的模样，眼底带着小小的得逞与温柔："顾衍之，不许抽烟，以后想难受、想抽烟的时候，就吃糖。"
+
+沉默蔓延数秒。
+
+低沉沙哑的嗓音混着清甜的糖味，慵懒又带着淡淡的威慑，含糊响起：
+
+"胆子，越来越大了。"
+
+他嘴上带着惯有的冷漠疏离与强势，指尖却默默收了起来，彻底放弃了寻烟的动作，任由那一点甜，稳稳留在唇间，落在荒芜的心底。`},
+  { title: "3.掌心吻", images: ["https://imgbed.heliar.top/i/91-MnNjIfKrq6f3U_IMG_2772.jpg",
+"https://imgbed.heliar.top/i/xVKv49lVmFT-wI4s_IMG_2773.jpg",
+"https://imgbed.heliar.top/i/HCO7WZiA7TBlH_to_IMG_2774.jpg"], content: `他把她的手拢在掌心，薄唇缓缓贴上她的指腹，唇瓣轻落，带着一点克制又滚烫的眷恋。他没有用力，只是轻轻含住指尖，眼瞳安静凝着她，所有平日里的冷戾尽数沉在眼底。
+
+他微微抬眼，唇慢慢离开，却依旧不肯放开她的手。指腹还残留着他唇间的温度，他目光沉沉锁着她，指尖轻轻摩挲她的手背。
+
+＂顾衍之……＂
+
+“别躲开。”他声音很低，带着一丝不易察觉的温柔，“让我多握一会儿。”
+
+他向来习惯把情绪藏在冷漠外壳之下，不会直白诉说爱意。可此刻，落在她指尖的吻，紧握不放的手，泄露了全部心事。
+
+幽暗房间无声，他掌心的温度慢慢熨烫着她的皮肤。他拥有清冷强大的外壳，唯独她，是他唯一愿意放下所有防备，虔诚以待的人。这份安静的缠绵，无声胜有声，余味久久不散。`}]
+  },
+  {
+    name: "诺恩", 
+    cover: "https://imgbed.heliar.top/i/26x6Zs2RWGI5pFNw_IMG_2745.jpg",
+    stories: [ { title: "1.诺恩的礼物", images: ["https://imgbed.heliar.top/i/iTyif01MVLGpARqP_IMG_2737.jpg",
+"https://imgbed.heliar.top/i/uiKj9Ucax-hsr9z4_IMG_2738.jpg",
+"https://imgbed.heliar.top/i/U6kOumoy4z7E_soW_IMG_2739.jpg",
+"https://imgbed.heliar.top/i/w6W9tdD7MgDEzCtU_IMG_2740.jpg",
+"https://imgbed.heliar.top/i/fr44YmTIv3FIXVHd_IMG_2741.jpg",
+"https://imgbed.heliar.top/i/qSQsW-wXinaTKPye_IMG_2742.jpg",
+"https://imgbed.heliar.top/i/FUvpKkQgtwFyC9Ad_IMG_2743.jpg",
+"https://imgbed.heliar.top/i/P2j0zMcsehlnbr2-_IMG_2744.jpg",
+"https://imgbed.heliar.top/i/26x6Zs2RWGI5pFNw_IMG_2745.jpg",
+"https://imgbed.heliar.top/i/oi8pTeQimr0pKNz-_IMG_2746.jpg"], content: `昏暗的卧室只留一盏暖灯，光影显得暧昧缱绻。
+诺恩私下换上宽松零落的希腊纯白神袍，绸缎软垂散漫，松松垮垮挂在肩头，一侧锁骨与肩线坦荡外露。
+无人在场，他彻底卸下人前冷峻的假面，眉眼间尽是少年独有的乖张腹黑，眼底沉满了方才攒下的醋意
+——不过是你方才和旁人多说了两句话，便让他满心酸涩，占有欲疯长。
+ 
+听见你的脚步声，他抬眸起身，长腿一迈，稳稳将你抵在墙边。
+ 
+没有吵闹撒娇，他唇角勾着坏痞又偏执的笑。明明是最圣洁的神明装扮，眼底却藏着最贪心的掠夺。
+
+“姐姐看。”他嗓音低哑缱绻，带着浓浓的醋味，极尽勾引，“我把自己打包成专属礼物，只送给姐姐一个人。”
+ 
+他微微俯身，气息扫过你的唇角，温热撩人。
+一只手轻轻扣住你的后腰，将你牢牢贴向他的身躯，力道温柔却不容挣脱，是势在必得的争抢：“别人什么都没有，只有我，满心满眼都是姐姐。可姐姐刚才，偏偏对着别人笑。”
+ 
+温顺的语气骤然染上戾气，乖张感瞬间炸开，眼眸沉沉锁住你的视线，寸寸蛊惑人心：“我很吃醋，姐姐知道的，我会发疯。”
+ 
+指尖轻轻摩挲着你的腰侧，动作暧昧又放肆，腹黑的算计藏在温柔眉眼间：“我可以乖，可以听话，可以任由姐姐摆布。但姐姐记住，我从不相让。”
+ 
+
+“姐姐的目光、姐姐的温柔、姐姐的偏爱，姐姐的一切，我都要争、都要抢、都要独占。”
+他抵着你的额头，轻笑出声，嗓音又软又野，偏执入骨：“姐姐今天必须收下我这份礼物，不许再看旁人一眼。不然……我不介意用我自己的方式，把姐姐锁在我身边，一辈子只看着我。”
+`} ,
+  { title: "2.醋海", images: ["https://imgbed.heliar.top/i/cQ-HejvYZG3-Wbyi_IMG_2776.jpg",
+"https://imgbed.heliar.top/i/-7wfoDJj2BwWZvC5_IMG_2777.jpg","https://imgbed.heliar.top/i/6gPyeDEpDFxrBDJm_IMG_2775.jpg"], content: `诺恩在外人面前永远是那副冷淡疏离的模样，蓝瞳淡淡扫过旁人时不带半分温度。
+
+可一关上门，所有的冷硬外壳尽数剥落，露出内里黏人又偏执的模样。
+
+他就是这样一颗裹着甜腻心思的黑芝麻馅的汤圆。他的占有欲、控制欲都出奇的强。
+
+私下他会用尾音软软地唤你："姐姐。"
+
+当他闻到你身上有其他不属于他的味道时，他会吃醋，会偏执到发狂。
+
+他一步步靠近，把你圈在墙角，蓝眼睛湿漉漉的，像在撒娇，话语里却藏着翻涌的醋意与占有。
+
+"姐姐刚刚看别人的时候，笑得好温柔。"他微微抬眼看向你，声音软，眼神却沉，言语间更像是威胁，"这种温柔姐姐只能给我，也只能对我一个人笑。"
+
+他伸手拉过你的手腕，将酒红缎带轻轻绕上你的手腕，又将你猛然往自己怀里带。
+
+"不要再看其他人，姐姐……"他的鼻尖蹭过你的下颌，撒娇似的呢喃，可手臂却收得越来越紧，不容你后退半分，"姐姐的目光、姐姐的时间、姐姐一切的一切……全都只能属于我一个人……要是姐姐再分心去看别人……"
+
+他顿了顿，舔了舔唇，眼底的委屈慢慢化作腹黑的偏执："姐姐会被彻底锁在我身边。"
+
+"诺恩说到做到。"
+`} ]
+  },
+  {
+    name: "人偶操控师", 
+    cover: "https://imgbed.heliar.top/i/yJzkppL-fyrahBYs_IMG_2759.jpg",
+    stories: [ { title: "第一章", images: ["https://imgbed.heliar.top/i/yJzkppL-fyrahBYs_IMG_2759.jpg",
+"https://imgbed.heliar.top/i/9_qvRvvymAgSIe7B_IMG_2762.jpg",
+"https://imgbed.heliar.top/i/LCxHSgVU3GeRika9_IMG_2763.jpg",
+"https://imgbed.heliar.top/i/kAFj-XK0GeKbTiPE_IMG_2764.jpg",
+"https://imgbed.heliar.top/i/4alNciRk1s0hZW_-_IMG_2765.jpg"], content: `暮色浸满房间时，麢第一次感受到了失控。
+ 
+他摆在身侧、与自己容貌气质全然一致的人偶，凭空消失了。
+ 
+数十年来，这人偶与他精气同源、五感互通。平日里它静默伫立，唯有麢注入魂力时，才会拥有鲜活的意识与敏捷身姿，一举一动皆随他心念而动。更甚，他与人偶共享视听触感，人偶所见即是他所见，人偶所感即是他所感，就连专属的催眠意念术，也需二人共鸣方可施展。那透支气运、一月仅限六次的禁忌能力，是他藏在骨血里最危险的底牌。
+ 
+可此刻，链接骤然断裂。
+
+麢垂着眼，他能清晰感知到，人偶并未损毁，只是脱离了他的魂力范围，被一个温热、鲜活的生人触碰拾起。
+ 
+千里之外，你在废弃的阁楼角落，捡到了那个看着可爱却眉眼疏离的人偶。
+ 
+人偶身着干净的白衬衫，发丝根根分明，它安静地坐在角落，瞬间扯住了你的目光。你不知这不是普通玩偶，将人偶带回了家，摆在了书桌最显眼的位置。
+ 
+从你指尖触碰到人偶肌肤的那一刻起，断裂的丝线悄然重连。
+ 
+远在空荡灰白房间里的麢，骤然睁眼。
+ 
+陌生的光影闯入他的视野，温柔的室内灯光、你清澈温柔的眉眼……
+是人偶的视线，完整复刻在了他的脑海中。他听见了你的赞叹，感受到了你指尖的温度。
+
+人偶依旧维持着静止的姿态，一动不动，骗过了懵懂的你。
+无人知晓，这看似可爱的玩偶背后，藏着一个遥远的操控者，正透过它的双眼，静静窥视着你的一切。
+
+麢静坐于黑暗中，他本可以立刻催动魂力，召回人偶。可当他透过人偶，看着你温柔打量玩偶、眼底盛满纯粹欢喜的模样，那颗常年冰封的心，第一次泛起了细微的涟漪。
+
+他压下了召回人偶的念头。
+
+只要他愿意，随时可以启动催眠之术。
+
+他可以隔着千里距离，与人偶建立专属共鸣，双重意念叠加，无声无息催眠眼前的你。可以像操控人偶一般，桎梏你的言行、限制你的行动、左右你的思绪，让你的一切皆由自己掌控。
+
+一月六次的气运限制，是悬在他头顶的枷锁，也是独属于他的绝对权柄。
+
+夜色渐深，书桌前的你还在温柔地望着人偶浅笑。
+
+房间里，麢抬眼，眼底是极致的冷漠与偏执
+
+他选择了蛰伏。
+
+任由人偶留在你身边，以一具玩具摆件的模样，陪伴在你身侧。他隐匿在黑暗之后，借人偶之眼，日夜窥探着你的生活。他不动用催眠，不强行干预，却牢牢握着可以随时掌控你一切的底牌。
+
+一人一偶，一明一暗。
+
+你不知自己从拾起人偶的那一刻起，你的一颦一笑、一举一动，早已尽数落入麢的眼底，沦为他掌心中，随时可被掌控的猎物。
+
+平静蛰伏的第七日，变故骤生。
+
+你夜里整理书桌时，无意间抬手触碰到了人偶的腰间
+远在孤室的麢，脑海里猛地炸开一阵尖锐的共鸣。人偶的五感被骤然刺激，那一丝贴近、一丝冒犯，顺着精气连线直直扎进他的神经。
+他共感了那触觉
+他沉默两秒，薄唇轻启，无声动用了禁忌之力。
+
+—【催眠，启动。】
+
+这是他本月第一次开启意念共鸣。
+
+一月仅限六次的禁忌，每一次使用，都在耗他的运。
+
+可他毫不在意。
+
+下一秒，千里之隔的两端，脑电波瞬间重叠共振。
+
+书桌前的你动作骤然僵住。
+瞳孔微微涣散，脑海里突然涌入一股冰冷、庞大、不属于自己的意念。
+
+像有第二颗灵魂强行挤进你的意识海域。
+
+房间里的风明明轻柔，你却莫名背脊发寒，四肢变得沉重僵硬，身体不再完全听从自己控制。
+
+你能模糊感觉到——
+
+有人在遥远的暗处，看着你、锁住你、读你的思绪。
+
+人偶依旧安静坐在桌前，一动不动。
+
+可只有麢知道，此刻人偶的意识彻底苏醒，与人偶双眼对视的你，已经落入双重意念的牢笼。
+
+麢通过人偶的视线，俯瞰你涣散的神情，声音直接响彻在你的脑海深处，低沉、清冷、带着不容反抗的掌控欲：
+
+“别动。”
+
+短短两个字。
+
+你全身肌肉瞬间彻底锁死，连指尖都无法颤动分毫。
+
+你惊骇地想要眨眼、想要后退、想要挣脱，意识清醒无比，却彻底丧失了身体主动权。
+
+你终于明白——
+
+这不是普通玩偶。
+
+你捡到的，是连接着深渊的枷锁。
+
+暗处的麢，以人偶为媒介，双重意念层层碾压，开始无声操控你的感官、你的行为、你的情绪。
+
+他轻轻一念，你原本慌乱的心绪瞬间被强行抚平，恐惧被剥离，只剩下空洞的顺从。
+
+他再一念，你僵硬的身体缓缓垂下抬手的动作，姿态温柔得仿佛自愿为之。
+
+像操控人偶一样，操控了活生生的你。
+
+你的意识悬浮在身体里，像被困在傀儡躯壳中的旁观者，眼睁睁看着自己被远方的陌生人支配。
+
+那种诡异、冰冷、极致臣服的掌控感，让你浑身发冷。
+
+而代价另一端，孤室中的麢微微俯身，指尖抵住眉心，呼吸微促。
+
+六次机会，一次已空
+
+他透过人偶的眼睛，静静看着呆滞温顺的你，唇角极淡地勾起一抹的弧度。
+
+催眠效果持续整整三分钟。
+
+三分钟后，意念枷锁骤然解除。
+
+你猛地回神，身体骤然恢复掌控，双腿一软跌坐在椅子上，冷汗浸透脊背，心脏狂跳不止。
+
+可你记不清具体过程，只残留深入骨髓的寒意——
+
+刚刚有个人，短暂地、彻底地、掌控过你的一切。
+
+而书桌前的人偶，依旧安静、清冷、无害。
+
+仿佛从未发生。
+
+远在彼岸的麢缓缓抬眼，望着重新归于平静的连线。
+
+他知道。
+
+游戏，才刚刚开始。
+
+他还有五次机会。
+
+足够——
+
+彻底驯服你的灵魂
+
+第一次催眠过后，整整三日，风平浪静。
+
+你再也不敢随意触碰那人偶。
+
+每次抬眼对上那双通透的眼眸，你心底都会窜起刺骨的寒意。
+
+那三分钟被彻底掌控身体的空白、灵魂悬空的窒息感，没有具体记忆，却刻进了本能的恐惧里。
+
+你隐隐意识到：这尊人偶在“看”你。
+
+而远在灰白空室的廳，始终没有切断连接。
+
+他日日借人偶之眼，凝视你的一举一动，看着你克制、警惕、惴惴不安的模样，心底的偏执愈发蔓延。
+
+他第一次催眠只是试探，耗去一次气运，只为告诉你——你不属于你自己。
+
+可他没料到，人类的灵魂，远比人偶顽固。
+
+第四日深夜，你下定决心，想要将人偶装箱封存。
+
+你伸手握住人偶的肩头，指尖刚触到微凉的衬衫布料，那根横跨两地的精气羁绊线，骤然剧烈震颤。
+
+麢的意识瞬间被刺痛。
+
+他不允许被丢弃。
+
+绝不允许。
+
+【第二次催眠，启动。】
+
+一月六次，已耗其二。
+
+同一秒，你的大脑轰然一震。
+
+房间里的灯光没变，可你的世界瞬间蒙上一层别人的阴影。
+
+这次的操控，比上次更霸道、更细致。
+
+不再只是简单禁锢动作。
+
+麢透过人偶的共呜，开始入侵你的思绪。
+
+冰冷的意念压着你的潜意识，强行篡改你的想法——
+【不可丢弃它。】
+【你喜欢它。】
+【你离不开它。】
+
+你的大脑被两股力量撕扯。
+
+一股来自遥远未知的操控者，强势、冰冷、不容抗拒；
+一股来自你自己本能的抗拒、恐惧、清醒。
+
+剧痛瞬间炸开。
+
+上次你是全然被动、懵懂受控。
+这一次，你清醒地感知到了“入侵”。
+
+你的意识没有被彻底碾压湮灭，反而在极致的压迫里，骤然滋生出尖锐的反抗力。
+
+别人在抢你的身体、读你的思绪、篡改你的本心。
+
+凭什么。
+
+漆黑的意识深海里，你的精神力骤然爆发，硬生生顶住了麢的双重意念压制。
+
+原本该彻底温顺臣服的思绪，竟出现了反向逆流。
+
+远在孤室的麢身形猛地一晃。
+
+嗡——
+
+极强的意识反弹顺着精气连线狠狠砸回他的脑海。
+
+他从未遇过这种情况。
+
+百年操控人偶，人偶永远顺从、共生、无逆无抗。
+他第一次操控活人，第一次遭遇反噬对抗。
+
+你涣散的瞳孔骤然一瞬清明。
+
+你模糊捕捉到了一丝极淡的、属于操控者的情绪——
+错愕、诧异、还有一丝被冒犯的冷怒。
+
+你摸到他了。
+`} ,
+  { title: "第二章", images: ["https://imgbed.heliar.top/i/yJzkppL-fyrahBYs_IMG_2759.jpg",
+"https://imgbed.heliar.top/i/9_qvRvvymAgSIe7B_IMG_2762.jpg",
+"https://imgbed.heliar.top/i/LCxHSgVU3GeRika9_IMG_2763.jpg",
+"https://imgbed.heliar.top/i/kAFj-XK0GeKbTiPE_IMG_2764.jpg",
+"https://imgbed.heliar.top/i/4alNciRk1s0hZW_-_IMG_2765.jpg"], content: `你看不见人，不知他样貌、不知他所在地，可你真切地触到了那个藏在人偶背后的灵魂。
+ 
+原来不是人偶诡异。
+是有人，隔着人偶，在操控你。
+ 
+“你……是谁？”
+ 
+你唇齿微颤，无声地在心底发问。
+ 
+这道微弱却清晰的意识反问，顺着羁绊线直直撞进麢的脑海。
+ 
+他怔了一瞬。
+ 
+随即，唇角勾起一抹极其阴郁、危险的笑。
+ 
+有意思。
+ 
+他以为是温顺到手的猎物，没想到，是一只会反咬深渊的小兽。
+ 
+既然你醒了。
+ 
+那这场游戏，就不必再藏着掖着。
+ 
+麢加重意念压制，冷冽的意识彻底笼罩你的整片思绪，字字沉冷，响彻你的脑海：
+ 
+“别动。”
+ 
+“再反抗——”
+ 
+“我就锁死你的意识。”
+ 
+这一次的催眠持续更久，拉扯更狠。
+ 
+你浑身发抖，冷汗浸透衣背，意识在被吞噬与自我坚守之间反复撕裂。你清晰地感受着对方的掌控、对方的情绪、对方的喜怒。
+ 
+他冷漠、偏执、占有欲滔天。
+ 
+他在消耗自己的气运，只为困住你、驯服你。
+ 
+数分钟后，催眠时效褪去。
+ 
+羁绊线暂时归于平静。
+ 
+你脱力跌坐在地，大口喘息，眼底不再只是恐惧，而是彻底的清醒与戒备。
+ 
+你确认了一切。
+ 
+人偶是媒介。
+远处有人。
+那人能随时催眠你、控制你、篡改你的思维。
+且每一次出手，都要付出一些代价——所以他次数有限。
+ 
+可他眼底的兴致，却越来越浓。
+ 
+他通过人偶轻声低语，音色薄凉又偏执：
+ 
+“敢反抗我。”
+ 
+“很好。”
+ 
+“我会让你彻底明白——”
+ 
+“你的反抗，毫无意义。”
+ 
+黑暗里，一人一偶，两地对峙。
+不再是单方面狩猎。
+猎物，已然睁眼。
+`,                authorNote: [
+          "女主就是普通人类，但是有顽强强大的精神力",
+          "还有个小设定，他们是神秘的高阶人偶操控师，",
+          "操控师在那个世界上存在的很少，",
+          "普通的只能感受五感，不能操控，",
+          "而且有一些操控师会用人偶做坏事，",
+          "他们中有人是执法人维护正常世界秩序，",
+          "执法人会找到那些犯戒的人操控师并处决，",
+          "猜猜看谁是执法人",
+          "对，执法人是沈司",
+          "而且沈司的催眠是无次数限制的，",
+          "最强大的幕后之人",
+          "而且执法人是不公开的，没人知道他是谁，",
+          "沈司对外也是，",
+          "遇见的一个坏操控师以为他也只有六次操控，",
+          "然后坏操控师修秘法可以夺取别人的操控次数，",
+          "他吸沈司的，",
+          "结果能量场无穷无限，想停停不了，",
+          "而沈司无动于衷只神态淡漠的看着他，",
+          "那个人硬生生把自己撑爆了",
+          "这个小剧场我们四位嘉宾都在一个故事线，",
+          "女主认识顾，但是不知道顾也是操控师，",
+          "顾发现了女主身上操控师的气息",
+          "只要操控人类就会外泄气息，",
+          "所以从不轻易操控人类",
+          "操控师只有外泄气息才能闻到，",
+          "比如操控别人这样",
+          "顾是不会操控女主的，他舍不得，",
+          "虽然他腹黑毒舌，但是他喜欢女主，",
+          "对女主他不喜欢强迫",
+          "顾第一次控制女主，是为了让女主清醒过来，",
+          "老顾太好了",
+          "诺恩后面是主动靠近女主的，",
+          "有个高阶坏操控师用玩偶操控一些女生做不法之事，",
+          "被诺恩发现了，",
+          "同时女主也发现那个坏操控师跟踪一个女生，",
+          "就打算报警，",
+          "诺恩第一次见面，很欣赏女主，",
+          "也闻到了女主身上其他操控师的气息，",
+          "所以诺恩选择了出手和那个坏操控师斗起来，",
+          "把女主救走了",
+          "诺恩也救了那个被坏操控师控制的女生，",
+          "并让她忘记了发生的事，好好生活",
+          "我们艾斯的出场是麢被秘法侵袭了，",
+          "分离出来了艾斯，",
+          "艾斯和麢一样，",
+          "继承了麢对女主的执念",
+          "艾斯比麢厉害，他可以读取别人的记忆",
+          "还是共生一个身体晚上自动切换，玩偶也会变",
+          "be的剧情我是想写一个人最后为了救女主用光了所有气运和次数，",
+          "一个月使用完超额会死，",
+          "然后不超额第二个月就会回血",
+          "【没说我说的就是评论】",
+          "目前我想写麢，或者诺恩",
+          "be的剧情我还想写为了救一个npc小女孩被吸光次数，",
+          "或者被逼亲手毁掉自己共生的人偶，",
+          "这种大爱得让我们顾来"
+        ]},
+{ title: "第三章", images: ["https://imgbed.heliar.top/i/yJzkppL-fyrahBYs_IMG_2759.jpg",
+"https://imgbed.heliar.top/i/9_qvRvvymAgSIe7B_IMG_2762.jpg",
+"https://imgbed.heliar.top/i/LCxHSgVU3GeRika9_IMG_2763.jpg",
+"https://imgbed.heliar.top/i/kAFj-XK0GeKbTiPE_IMG_2764.jpg",
+"https://imgbed.heliar.top/i/4alNciRk1s0hZW_-_IMG_2765.jpg"], content: `第二次催眠的对峙落幕之后，整整两日，你活在层层紧绷的戒备里。
+你再也不敢触碰书桌的人偶，你清楚地知道，这片安静是假象。
+千里之外的暗处，藏着一个掌控欲病态的操控师。
+他握着你的软肋，握着随时可以入侵你意识的权柄，每一次，都足以颠覆你的所有主动权。
+麢静坐在沙发上，心口却翻涌着从未有过的燥热与偏执。
+百年岁月，他操控过无数人偶，习惯了绝对的顺从与掌控，唯独你，是唯一的变数。
+你的反抗、你的清醒、你敢于直面的倔强，像一粒滚烫的火种，砸进了他终年冰封的世界。
+不仅没有让他收手，反而彻底勾起了他势在必得的征服欲。
+他盯着人偶传回的、你静坐发呆、满眼警惕的模样，眼底阴郁层层沉淀。
+既然软硬不吃，那便彻底碾碎你的傲骨。
+【第三次催眠】
+他眼神偏执炽热，毫无半分迟疑。
+比前两次更加霸道、更加细密的意念洪流，轰然砸入你的意识深海。
+这一次，麢不再禁锢动作、不再篡改思绪。他开始掠夺感知。冰冷的、属于他的气息，强行填满你的五感。
+你身体骤然僵硬，眼前的视野微微重叠，耳边响起不属于周遭环境的低哑呼吸声。你看不见他，却仿佛被他牢牢圈在怀中。他的意念贴着你的意识游走，一寸寸丈量你的情绪、你的慌乱、你藏在心底的所有抵触。
+“躲什么？”
+低沉的声线，直接扎根在你的灵魂深处，缠绕不休。
+“从捡起我的人偶那一刻，你就该。”
+“归顺我”
+“臣服我”
+强烈的意识碾压席卷而来，这是前两次从未有过的窒息压迫。
+你的意识一半清醒、一半沉沦，身体轻飘飘的，仿佛下一秒就会被他操控。
+你咬紧牙关，指甲深深掐进掌心，逼着自己凝聚所有精神力抵抗。
+两股强大的意念在无形的羁绊线上疯狂博弈、拉扯、碰撞。
+你拼尽全力守住自己的意识边界，不让他彻底侵占，微弱却执拗的反抗，一次次撞向麢的掌控之力。
+远处的麢身形震颤，却愈发上瘾。
+他喜欢这种博弈。
+喜欢独一无二的你，为他挣扎、为他紧绷、为他对抗。
+你越是这样。
+他就越想得到。
+这场无声的意识博弈，持续了整整五分钟。
+五分钟后，催眠枷锁骤然崩解。
+你浑身脱力，直直趴在书桌上，浑身冷汗淋漓，呼吸急促紊乱，大脑空空沉沉，残留的冰冷气息黏在你的肌肤、你的发丝、你的骨血里，挥之不去。
+你彻底脱了力，连抬手的力气都没有，心底只剩无尽的惶恐与无力。
+你终于明白，他不是一时兴起。
+他是要一点点磨掉你的抵抗，一点点驯服你的灵魂。把你彻底变成属于他的、独一无二的专属物品。
+而远在彼岸的麢。
+三次机会已过。
+他静静望着人偶视线里虚弱低垂的你，唇角勾起掌控欲病态，却又带着些许温柔的笑意。
+“还有三次。”
+“慢慢来，我有的是时间。”
+……
+`},
+{ title: "第四章", images: ["https://imgbed.heliar.top/i/yJzkppL-fyrahBYs_IMG_2759.jpg",
+"https://imgbed.heliar.top/i/9_qvRvvymAgSIe7B_IMG_2762.jpg",
+"https://imgbed.heliar.top/i/LCxHSgVU3GeRika9_IMG_2763.jpg",
+"https://imgbed.heliar.top/i/kAFj-XK0GeKbTiPE_IMG_2764.jpg",
+"https://imgbed.heliar.top/i/4alNciRk1s0hZW_-_IMG_2765.jpg"], content: `次日午后。
+
+你心绪纷乱，无心独处，出门赴了一场久违的碰面。
+
+顾衍之回来了。
+
+你的青梅竹马，从小到大永远站在你身前护着你的人。
+
+他身姿挺拔，一身皮衣黑色衬衣，眉眼冷冽利落，五官精致凌厉，周身萦绕着生人勿近的高冷疏离。
+
+他性子向来毒舌别扭，对外人冷漠寡言、寸步不让，唯独对你，永远藏着旁人看不见的温柔纵容。
+
+他喜欢你很多年，深藏心底，缄口不提，你从未察觉分毫。
+
+无人知晓，这位某某总裁，亦是世间隐于暗处的顶级人偶操控师。
+
+比起麢霸道偏执的掠夺，顾衍之的操控之力更为内敛、深沉、隐忍，藏于骨血，从不外露。
+
+他快步走到你身前，惯常清冷淡漠的眼眸在落在你身上的瞬间，瞬间柔和几分。
+
+只是刚靠近半步，他便微微蹙眉，灵敏的五感瞬间捕捉到一丝极淡、却极具侵略性的陌生气息。
+
+那是——同源操控师的气息残留。
+
+冰冷、阴郁、偏执、带着极强的占有欲，陌生又危险，丝丝缕缕黏在你的发丝、脖颈、肌肤之上。
+
+那是多次使用意念纠缠、催眠侵染留下的痕迹。
+
+顾衍之严重的温柔瞬间褪去，眼底飞速掠过一层极深的暗沉与戾气。
+
+他自幼修习操控术，对同类气息敏感至极，分毫不差。
+
+你身上，沾了别的操控师的味道。
+
+而且是强行入侵、深度纠缠过的痕迹。
+
+常年克制的占有欲骤然翻涌，酸涩与戾气交织，密密麻麻缠上心头。
+
+他不动声色，抬手，指尖极其轻柔地拂过你的发顶，动作温柔缱绻，语气却带着惯有的毒舌冷意，藏着不易察觉的醋意：
+
+“几天不见，身上沾了什么乱七八糟的东西？”
+
+你一愣，茫然抬手摸了摸头发：“什么？我没碰过别的东西。”
+
+你全然不知操控师魂力的存在，更不知道自己连日来被另一个顶级操控师层层纠缠、深度窥探。
+
+看着你懵懂无知、全然被人暗地拿捏的模样，顾衍之眼底的阴翳更重。
+
+心疼、愤怒、醋意、后怕，层层叠叠席卷而来。
+
+有人在暗处盯上了你。
+
+有人用禁忌催眠术，一次次入侵你的意识，纠缠你的灵魂。
+
+而你，一无所知。
+
+他收敛了眼底所有汹涌的情绪，恢复了平日高冷内敛的模样，只是看向你眼眸的深处，已然覆上一层势在必得的守护与戒备。
+
+同为操控师，他最清楚同类的手段。
+
+那人耗损珍贵气运，一次次对你动用催眠，绝非试探，是志在必得。
+
+是想把你彻底驯服，占为己有。
+
+顾衍之垂在身侧的指尖微微收紧，骨节泛白。
+
+隐忍多年的心意，深藏多年的能力，在这一刻，因为另一个操控师的觊觎，彻底破了戒。
+
+他依旧温柔看着你，声线低沉温柔，唯独眼底藏着冰冷的博弈锋芒：
+
+“以后别乱捡陌生东西，别碰奇怪的事物。”
+
+“有我在，没人能勉强你半分。”
+
+阳光下，他温柔护你，心底却已然布下棋局。
+
+暗处的麢肆意窥探、肆意掠夺。
+
+明处的顾衍之，隐忍蛰伏、暗中守护、伺机反击。
+
+两大顶级操控师，一暗一明，一偏执一腹黑，从此为你对峙交锋。
+` }]
+  },
+  {
+    name: "灵魂往生者 第一季", 
+    cover: "https://imgbed.heliar.top/i/FPDcMnQb0CLyGVOW_IMG_2851.jpg",
+    stories: [ { title: "轮回不渡，岁岁等你", images: ["https://imgbed.heliar.top/i/uBTUOsQx7h6J1gCG_%E6%88%AA%E5%B1%8F%202026-11-18%2023.43.01.png",
+"https://imgbed.heliar.top/i/DrUMwnyWDbBAl0Qg_%E6%88%AA%E5%B1%8F%202026-11-18%2023.48.18.png",
+"https://imgbed.heliar.top/i/78BjirN3qYMJrbGQ_IMG_2850.jpg",
+"https://imgbed.heliar.top/i/FPDcMnQb0CLyGVOW_IMG_2851.jpg"], content: `麢是游离多元宇宙之外的永恒灵魂往生者，超脱天道轮回。
+掌轮回渡杀权柄，引渡亡魂、镇灭邪祟。
+外表冷漠孤疏，心性悲悯温柔，独行万古，默默承载众生遗憾。
+ 
+麢立在无人的巷口，轮回之眼静敛于墨色瞳孔，他刚引渡完一桩执念深重的亡魂，时空夹缝的寒凉裹着他周身，疏离又孤冷。
+ 
+万千位面的生离死别，他见了亿万次，早已无波无澜。
+
+世人的遗憾、痛哭、不舍，于他而言，不过是轮回往复的寻常闹剧。
+ 
+直到一阵轻轻的、怯生生的拉扯，拽住了他风衣的衣角。
+ 
+微凉的触感极轻，像一片快要消散的落叶。
+ 
+麢垂眸。
+ 
+巷尾的路灯昏黄闪烁，光影里站着一个小小的女童，约莫五六岁的模样，穿着洗得发白的碎花小裙，浑身透着透明的虚浮，是滞留人间、迟迟不肯往生的孤魂。
+ 
+小女孩眉眼软软的，脸蛋苍白，一双干净的眸子盛满小心翼翼的期盼，死死攥着他的衣摆，不敢用力，怕眼前这个好看又冷漠的大哥哥消失。
+ 
+过往所有亡魂，要么痛哭哀嚎，要么戾气滔天，要么怨怼不休。唯独她，安静、温顺，像从未受过世间苦难。
+ 
+麢薄唇轻抿，声线冷淡无温，是万年不变的摆渡语调：“夙愿是什么。我替你了结，渡你往生。”
+ 
+他的声音没有情绪，冰冷得如同时空冰河。
+ 
+小女孩仰着小脸，眨了眨湿漉漉的眼睛，轻轻摇头，声音细若蚊蚋：“大哥哥，我没有想要的礼物，也没有想见的人。”
+ 
+麢指尖微顿。
+ 
+亿万年摆渡生涯，他第一次遇见没有执念的亡魂。
+ 
+众生离世，皆有牵挂：牵挂亲人、牵挂遗憾、牵挂未完成的余生。无愿无求者，早已魂归天地，不会滞留人间。
+ 
+“滞留阳间，必有执念。”他的轮回之眼微微松动，眼底浮起细碎的银灰轮转纹路，可看透世间一切虚妄与心事，“说出来，便可解脱。”
+ 
+小女孩低头，小小的手指绞着衣角，沉默了很久，才抬起头，眼底盛着细碎的泪光，软糯又认真：“真的什么都可以实现吗？那我的愿望，能不能……抱抱你？”
+ 
+秋风卷着细雨掠过巷口，瞬间静谧无声。
+ 
+麢冷艳疏离的眉眼第一次出现裂痕。
+ 
+他见过山河崩塌、位面湮灭、众生痴狂，见过最狠的恶、最深的怨、最痛的别离，却从未听过这样简单、荒唐、毫无意义的夙愿。
+ 
+亿万亡魂，求富贵、求团圆、求重生、求释怀。
+ 
+唯独她，只求一个拥抱。
+ 
+他垂眸看着眼前单薄透明的小身影，周身杀伐肃杀的气场下意识收敛，轮回枪的赤红戾气尽数隐没。他是游离三界之外的摆渡人，掌生死、判善恶、渡众生，早已断尽七情，不懂人间温情。
+ 
+“仅此一次。”
+ 
+清冷的嗓音落下，他微微俯身，宽大的黑色风衣轻轻拢下，小心翼翼、极尽轻柔地环住了小小的女童。
+ 
+他的怀抱很冷，带着时空夹缝亘古不变的寒凉，没有温度，却格外安稳。
+ 
+小女孩瞬间红了眼眶，小小的身子微微颤抖，小心翼翼地贴在他微凉的衣襟上，生怕转瞬成空。她埋着头，死死忍着哭声，肩膀一抽一抽的。
+ 
+“谢谢你，大哥哥。”
+ 
+温热的泪水穿透他的衣料，落进他万年冰封的心底。
+ 
+麢身形微僵。
+ 
+他从未被亡魂触碰，从未共情世人悲欢。亿万年来，他永远是旁观者，是渡人的神，是冰冷的规则，从无任何人，会对他说一句谢谢。
+ 
+怀抱小小的、易碎的灵魂，他清冷的声线微哑：“为何执念一个陌生人的拥抱。”
+ 
+小女孩抬起泪眼，澄澈的眸子望着他绝美又冷漠的眉眼，轻轻开口，道出了最戳心的反转：
+ 
+“因为六年前，也是一个下雨天。
+有一个穿黑衣服的大哥哥，站在马路边。
+我被货车撞飞的那一刻，所有人都在尖叫、在躲开，只有你，冲过来接住了我。
+那是我短暂的一生里，唯一一次，有人拼尽全力抱住我，不让我摔得更疼。”
+ 
+“我那时候太小了，疼得睁不开眼睛，只记得你的衣服很黑，怀抱很凉，但是很稳。”
+ 
+“我等了你六年啦。”
+ 
+“我不想回家，不想找爸爸妈妈，他们早就忘了我。我也不想往生，我只想再被你抱一次。”
+ 
+“大哥哥，六年前救我的人，就是你对不对？”
+ 
+秋风骤停，秋雨无声。
+ 
+这一刻，万年不变、冰封孤寂的时空长河，轰然碎裂。
+ 
+麢瞳孔震颤，眼底流转的轮回纹路骤然紊乱，银灰微光剧烈闪烁。
+ 
+他终于记起。
+ 
+六年前，并非什么惊天动地的位面浩劫，只是人间一场微不足道的车祸。
+ 
+那天他路过这方俗世，看见疾驰的货车冲向横穿马路的小女孩。
+ 
+他本是局外人。
+ 
+天道轮回，生死有命，凡人寿数天定，他从不会干预俗世因果、插手凡人命运。这是他恪守亿万年的规则，是他独有的道。
+ 
+可那一刻，看着孩童懵懂无辜的眼眸，他万年冰冷的心，终究破例了。
+ 
+他下意识冲上前，接住了坠落的小小身躯。
+ 
+他救不了她的命，生死天命不可逆。
+ 
+他唯一能做的，就是在她生命最后一秒，拼尽一身时空灵力，护住她最后的魂魄，让她走得不痛、不惧、不孤单。
+ 
+这件事，于他亿万年的漫长岁月里，不过是转瞬即逝的一粒尘埃。
+ 
+他早忘了。
+ 
+他渡遍万千众生，记得所有人的执念、所有人的遗憾、所有人的不甘。
+ 
+唯独忘了，自己曾给过一个濒死的小女孩，此生唯一的温柔。
+ 
+世人皆记得他的渡化、他的救赎、他的慈悲。
+ 
+唯独他自己，从不记得自己的温柔。
+ 
+小女孩望着他泛红的眼底，笑得软软的，带着泪痕：“我知道你是神仙，是摆渡往生的大人。六年里，我看着你渡走好多人，我不敢打扰你。我一直在等，等你再路过这里，等你再抱我一次。”
+ 
+“爸爸妈妈后来生了弟弟，再也不会在雨天找我了。全世界都忘了我，只有我，还记得当年接住我的你。”
+ 
+“这是我一生，唯一的温柔啦。”
+ 
+麢收紧了手臂。
+ 
+这是他亿万年来，第一次主动拥抱一个灵魂。
+ 
+以往的渡化，皆是公事公办，清冷疏离，不留分毫温度。可此刻，他宽大的怀抱，温柔得不像话。
+ 
+常年杀伐果断、铁面无私的灵魂摆渡人，眼底冰封万年的孤寂与冷漠，尽数融化成细碎的温柔与酸涩。
+ 
+他见惯了众生为亲人执念、为情爱沉沦、为名利不甘。
+ 
+原来世间最可怜的遗憾，是无人记得的离别，无人惦念的死亡。
+ 
+小女孩一生短暂，从未被世界温柔以待，却唯独记住了他转瞬即逝的一次恻隐。
+ 
+她不求重生，不求圆满，不求世人铭记。
+ 
+只求，再复刻一次，生命最后一秒的温暖。
+ 
+“夙愿已了。”
+ 
+麢的声音不再冰冷，带着极轻极淡的沙哑，轮回之眼亮起柔和的银白光晕，温柔包裹住小女孩透明的魂魄。
+ 
+“走吧，我渡你去最温柔的轮回。”
+ 
+“下辈子，岁岁平安，一生顺遂，被万人疼爱，无灾无难，无忧无虑。”
+ 
+柔和的白光缓缓托起小小的身影，小女孩笑着挥挥手，看着眼前清冷温柔的黑衣大哥哥，渐渐化作漫天细碎的星光。
+ 
+巷口秋雨停歇，夜色温柔。
+ 
+万物归于寂静。
+ 
+只剩麢一人伫立原地，长风拂动他黑色的衣摆，龙须发丝轻轻晃动。
+ 
+亿万年来，他渡众生离苦，解万人执念。
+ 
+今夜，唯有他，被一个素不相识的小小亡魂，渡化了冰封万年的孤心。
+ 
+原来所谓轮回天道，冰冷规则之外。
+ 
+最动人的温柔，从来不是轰轰烈烈的救赎。
+ 
+是你无心的一次善意，被人记了岁岁年年。
+ 
+是全世界皆弃我而去，唯你，曾护我最后一程。
+ 
+他抬手，轻轻抚过衣襟上早已消失的泪痕，素来无波的眼底，藏了一丝永恒的温柔与牵绊。
+ 
+从此，万千位面，漫漫归途。
+ 
+他依旧是冷漠疏离的灵魂摆渡人麢。
+ 
+只是心底，永远住进了一个雨天的小小遗憾，一场无人知晓的温柔相遇。
+` } ,
+  { title: "葬情", images: ["https://imgbed.heliar.top/i/jLIVGH3hkaNg1f1E_IMG_2853.jpg",
+"https://imgbed.heliar.top/i/7prhTIMIyvqt-A-p_IMG_2855.jpg"], content: `雨夜临江，薄雾漫过江堤，浸得整座城市清冷荒芜。
+ 
+麢静立夜色深处，黑色长风衣吸纳尽世间微光，周身寒凉死寂。他眼底轮回纹路浅浅流转，看见江畔滞留住两道纠缠至死的亡魂。
+ 
+一男一女，相拥跪地，姿态缱绻温柔，是旁人见之动容的情深模样。
+ 
+男人名陈屿，眉眼温雅，神色悲戚。
+女人名苏晚，一身湿透的衣裙，眉眼含泪，满目不甘。
+ 
+看见麢走近，陈屿抬眸恳求，嗓音沙哑破碎：“摆渡大人，求您渡她往生。我妻子苏晚意外坠江而亡，心中执念不散。她这辈子唯一遗憾，是从未与我正经拜堂成婚。我只求圆她一场婚礼，让她无憾离去。”
+ 
+苏晚含泪点头，目光死死眷恋着身前男人：“我只想穿一次婚纱，和他好好结一次婚。仅此一念，便再无牵挂。”
+ 
+世人情爱，多是这般生离遗憾。
+ 
+亿万载摆渡，麢早已见惯不怪。他眸色微凉，轻抬指尖，银白时空微光漫开。
+ 
+冷雨化作朦胧喜帐，江岸瞬成红烛婚房。
+素白婚纱落于苏晚身间，红绸摇曳，暖意融融。
+ 
+两人相对而立，认认真真行完一场迟到的婚礼。
+一拜天地，二拜高堂，夫妻对拜。
+ 
+礼成刹那，苏晚眉眼所有郁结尽数舒展。她含泪浅笑，望向麢：“执念已了，我可以走了。”
+ 
+往生白光缓缓升起，即将包裹她的魂体。
+ 
+可就在此刻，麢眼底轮回法阵骤然紊乱，银灰纹路剧烈震颤。
+ 
+他抬眼，淡淡盯住含笑伫立的陈屿，声线冷破雨幕：
+＂要走的不只她一人＂
+
+“你也早已死了。”
+ 
+刹那间，红烛崩碎，喜帐散尽，暖意归零。
+ 
+只剩冰冷雨丝，簌簌落满空荡江堤。
+ 
+陈屿脸上的温柔瞬间碎裂，满眼茫然错愕：“我不可能……我明明还活着，我还要守着她……”
+ 
+“你守不住。”
+麢语声无波，道破残酷真相，“她离世三刻，你立于江边悲恸失控，失足坠江，当场殒命。你执念太深，魂魄滞留原地，自欺欺人，困在‘自己尚在人世、独自悼妻’的幻境里。”
+ 
+从始至终，这里没有活人。
+一场深情送别，不过是两个亡魂，在雨夜自演的圆满。
+ 
+真相落定，爱恨似有归宿。
+可麢眼底因果仍未闭合，轮回迟迟未落。
+ 
+他望着两两相望的二人，缓缓开口：
+“你们从不是意外落水。”
+ 
+时空碎片倒转，映出前夜无风无雨的江岸真相。
+ 
+夜色安宁，江水平静。
+是苏晚，亲手将陈屿，狠狠推入滔滔寒江。
+ 
+彼时的她，没有温柔，没有不舍。
+眼底只剩积攒数年的寒凉与怨恨。
+ 
+全场死寂。
+ 
+陈屿浑身僵颤，难以置信望向朝夕相守的妻子。
+ 
+苏晚垂眸，肩头轻抖，终于卸下多年伪装的温婉，低笑出声，字字皆泪：
+“是我推的。”
+ 
+“你演了三年深情丈夫，背地里出轨三年。一边哄我余生相守，一边和别人私许未来。”
+“我一次次原谅、一次次自欺，可我熬不住了。我舍不得亲手毁了你，可我宁愿让你死，也不愿再看你戴着爱我的面具，骗我一生。”
+ 
+恨意刺骨，字字诛心。
+ 
+陈屿脸色惨白，泪落如雨，痛彻心扉：“我知错了！我早已和她断干净！我落水那一刻，没有半分怨你，只剩遗憾——遗憾我没能好好弥补你！”
+ 
+众人皆以为，妻子被背叛伤透，因爱生恨，手刃爱人。
+一场深情悲剧，终是人性凉薄、爱恨两相负。
+ 
+可麢静静伫立雨中，剖开最后一层、最彻骨的真相。
+ 
+“你断干净婚外情，不是悔改。”
+“是因为你查出绝症，只剩半月寿命。”
+ 
+时空光影流转，终局真相轰然揭开。
+ 
+陈屿早已得知自己时日无多。
+他厌倦了周旋情爱，也懒得再演假意温柔。
+ 
+他斩断外情，回归家庭，日日伴她左右，不是回头深爱。
+是知道自己将死，特意留一身“浪子回头、深情不悔”的皮囊。
+ 
+他清楚苏晚早已察觉他的背叛，清楚她日夜煎熬、自我内耗。
+可他从不解释，从不弥补。
+ 
+他任由她困在痛苦里，静静等死。
+他想让自己以“完美亡夫”的身份落幕，让苏晚余生一辈子活在愧疚、怀念与自责里。
+ 
+他最后半月的温柔，
+是一场报复性的深情骗局。
+ 
+而彼时的苏晚，崩溃绝望，恨极他的虚伪背叛，亲手将他推入江中。
+ 
+她以为自己在报复负心人。
+殊不知，她亲手杀死的，是只剩半月寿命、本就时日无多的爱人。
+ 
+雨落无声，江堤寂然。
+ 
+两人两两相望，泪流满面，哑口无言。
+ 
+她的狠绝，是被欺骗后的绝望反噬。
+他的温柔，是临死前诛心的算计。
+ 
+他们曾炙热相爱，真心交付。
+却在猜忌、背叛、隐瞒、执拗里，一点点磨碎所有深情。
+ 
+她因爱成魔，亲手弑爱。
+他因恨设局，假意归心。
+ 
+最可悲的从不是不爱，而是
+两人至深爱过，互相亏欠过，互相折磨过，
+到死，都没能看透彼此心底最后的执念与苦衷。
+ 
+麢眼底微凉，轮回纹路缓缓平复。
+ 
+“执念尽散，因果闭环。”
+ 
+两道温柔白光缓缓裹住两道残破魂影，清冷语声落于雨幕：
+“此生情爱纠缠，爱恨两清，罪孽抵消。”
+“往生各赴前路，来生，不必相逢，不必再遇。”
+ 
+雨落滨江，洗尽人间虚妄。
+ 
+原来世间最残忍的轮回，从不是生死相隔。
+是两个真心爱过的人，
+硬生生把一场良缘，
+活成了永世无法消解的欺骗与遗憾。
+`} ,
+  { title: "九条命", images: ["https://imgbed.heliar.top/i/SkxuMrvix_HzThPo_IMG_2860.PNG",
+"https://imgbed.heliar.top/i/9QaAm3KBxRS9MZtz_IMG_2861.jpg"], content: `寒夜的晚风卷着刺骨戾气漫过城郊别墅。
+
+多元宇宙摆渡人麢静立暗处，一身黑色西装清冷矜贵，他敏锐捕捉到滔天妖怨，循着妖气溯流而来，恰好撞见院中惨烈一幕。
+ 
+白衣少女身形凌厉，五指凝着凛冽妖力，死死锁死中年男人的脖颈，周身杀意决绝。是修行百年的猫妖小白，此刻偏执疯狂，一心要了结眼前仇人性命。
+ 
+就在妖力即将贯穿对方心脉的刹那，一道清冷无形结界骤然而出，死死禁锢住小白所有动作，杀伐之势瞬间冻结。
+ 
+小白猛地抬眼，猩红眼底满是暴戾与沧桑，看清来人那一刻，她冷冷扯唇，带着满身血债与不甘嗤笑出声：“摆渡人？”
+ 
+“还轮不到你渡我。”
+ 
+麢身姿挺拔伫立夜色，声线平淡无波，却带着凌驾众生轮回的肃穆：“私刑戮杀，乱尽人间因果，停下。”
+ 
+尘封八年的陈年往事，随着轮回眼的微光，缓缓铺展在夜色之中。
+ 
+多年前，尚且是只弱小幼猫的小白，重伤濒死流落街头，是这户人家十九岁的温柔姐姐，心软将她救下带回家里。
+ 
+一家四口，善良温厚的父母，温柔细腻的大姐，软糯懵懂的十二岁小妹，全员待她极尽温柔偏爱。冬日抱她暖身，夏夜陪她乘凉，日日投喂呵护，把一只无依无靠的流浪猫，宠成了全家的小牵挂。
+ 
+小白潜心苦修百年，只求早日化形，守护这倾尽温柔待她的一家人。
+ 
+可人间最毒是人心贪念。
+ 
+父母一生赤诚坦荡，错信相交多年的挚友。对方觊觎自家企业产业，狼子野心暗藏多年，精心策划了一场致命车祸。
+ 
+那场滂沱雨夜，恰逢小白彻底幻化人形的第一天。
+ 
+她亲眼伫立路边，眼睁睁看着疾驰而来的车辆狠狠撞击护栏，车身翻滚碎裂，满目猩红惨烈。
+ 
+疼爱她的父母当场殒命，温柔救她的大姐尸骨无存，阖家温情，一瞬覆灭崩塌。
+ 
+漫天残骸，雨夜泣血。
+ 
+一场灭门惨祸，全家四口，唯独十二岁的小妹侥幸存活，却被车祸重创双眼，彻底坠入无尽黑暗，终生失明。
+ 
+初化人形、修为尚浅的小白，无力逆天改命，无法挽回至亲性命。看着废墟里浑身是伤、无助颤抖、从此不见天光的小小女孩，她肝肠寸断，执念疯长。
+ 
+为报恩，为守护这家人最后的血脉，她逆天犯禁，附身于刚刚惨死的大姐躯体，顶替了姐姐的身份。
+ 
+从此，世间再无猫妖小白，只剩失明小妹唯一的依靠。
+ 
+八年光阴倏忽而过。
+ 
+白日里，她褪去所有妖性戾气，温柔细致，寸步不离照顾失明小妹，陪她长大、教她生活、护她岁岁安稳，替逝去的一家人撑起这片残破天地；夜幕降临，她化身嗜血妖物，踏血独行，开启漫漫复仇之路。
+ 
+猫有九命，可抵天道惩戒，可扛杀生业债。
+ 
+八年杀伐，她逐一清算仇人所有帮凶党羽，杀一人，损一命。
+ 
+八条鲜活命数，尽数耗散在血海深仇之中，魂体早已千疮百孔、濒临溃散。
+ 
+如今，她仅剩最后一条本命。
+ 
+眼前苟延残喘的中年男人，便是当年策划灭门车祸、谋夺家产的始作俑者，是她执念八年的最终仇敌。
+ 
+麢眼底轮回纹路流转，勘破她满身伤痕与无尽执念，清冷开口，字字沉重：“猫有九条命，你还剩几条？”
+ 
+小白垂落眼眸，再抬眼时眼底只剩破釜沉舟的决绝：“一条。”
+ 
+“杀他，足够。”
+ 
+八年孤苦隐忍，八条性命献祭，她早已无所畏惧，只求以最后一命，血债血偿，告慰一家人亡魂。
+ 
+麢眸光微暗，道出残酷真相，彻底击碎她最后的执念：“不必了。”
+ 
+“此人早已确诊晚期癌症，时日无多，不过苟延残喘数日。自作孽不可活，天道轮回自有惩戒，他逃不过命数。”
+ 
+话锋一转，他语声肃穆，带着轮回法度的公正：“你复仇无错，可你八年杀伐，牵连无辜，屠戮了他家中从未参与恩怨的老小。”
+ 
+“他罪该万死，可家人本无罪。你杀无辜、造恶业、乱轮回，罪孽深重，今日，我留你不得。”
+ 
+话音落地，麢抬手欲动，欲镇压满身业障的猫妖。
+ 
+千钧一发之际，一道纤细身影踉跄狂奔而来，义无反顾挡在小白身前。
+ 
+失明八年的小妹，凭着熟悉的气息，精准护住了假扮姐姐的猫妖，声音颤抖却无比坚定：“姐姐！快跑！跑的远远的，永远都不要回来！”
+ 
+她背对小白，直面气场凛然的摆渡人，小小的身躯挺直倔强，以命相护：“你要杀她，先杀我！”
+ 
+夜色死寂，晚风骤停。
+ 
+麢看着身前执拗的少女，淡淡一语，击碎八年虚妄：“小姑娘，她不是你姐姐。”
+ 
+空气瞬间凝固。
+ 
+少女浑身一僵，片刻死寂之后，没有崩溃，没有错愕，反而缓缓勾起唇角，溢出一抹温柔又酸涩的浅笑。
+ 
+她轻轻摇头，声音轻柔却通透：“我知道。”
+ 
+从八年前那场车祸之后，她就知道，身边陪着自己的，从来不是真正的姐姐。
+ 
+真正的姐姐温柔怯懦，而她的“姐姐”，夜里会消失，身上偶尔带着淡淡血腥味，指尖气息清冷非人。
+ 
+十二岁的小女孩，在无边黑暗里，靠着一丝执念与熟悉的暖意，隐忍装傻八年。
+ 
+她明明早已洞悉所有真相，知晓家人惨死、姐姐离世、身边人是报恩猫妖、知晓她夜夜复仇、耗损性命、满身罪孽。
+ 
+可她从未点破。
+ 
+她假装懵懂无知，假装依赖软弱，假装活在姐姐的庇护之下。
+ 
+只因这只妖，用八年青春、八条命数、满身血债，替死去的家人，给了她八年安稳余生，给了她黑暗人生里唯一的光。
+
+她怕粉碎了小白的执念
+ 
+她是人，她懂善恶，懂恩怨，更懂这只妖极致笨拙、倾尽所有的报恩。
+ 
+八年，妖以命护人，人以心护妖。
+ 
+可真相大白的瞬间，麢依旧未改心意。
+ 
+他眼底无半分波澜：“知情亦无用，妖罪已定，无可饶恕。”
+ 
+阵法骤然收紧，凌厉的结界纹路割得小白皮肉开裂，鲜血浸透衣衫。小白痛得浑身颤抖，疯狂挣扎。
+ 
+眼看小白即将被阵法碾灭，失明的少女轰然跪地。
+ 
+坚硬的青石地面，她一遍又一遍狠狠磕头。
+ 
+一下，又一下。
+ 
+额头重重撞击地面，很快磕破皮肉，鲜红的血顺着眉心滑落，模糊眉眼。
+ 
+“求求你……放过她吧……”
+“求求摆渡人大人，饶她一命……”
+ 
+小白看着跪地泣血、不停磕头的妹妹，心痛到极致，声音破碎嘶吼：“别磕了！起来！我不需要你求他！”
+ 
+麢冷眼旁观，心如磐石，不为所动。
+ 
+少女看不见前路，只能在地上慌乱摸索，拼尽全力爬到麢脚边，死死攥住他的黑色衣角，掌心磨得通红破皮，哭声绝望哽咽：“她是为我报仇……她没有错……”
+ 
+“我替她还债……我用我的命换她余生……求求你，放过她……我甘愿替她灰飞烟灭……”
+ 
+麢眼底极快闪过一丝微不可察的凝滞，转瞬消散，依旧是万年不变的清冷漠然。
+ 
+他垂眸，淡淡开口：“好。”
+“那就你替她死。”
+ 
+“不要——！！”
+ 
+小白彻底崩溃，疯狂冲撞禁锢阵法，结界利刃在她身上划满密密麻麻的血痕，魂体濒临溃散，她歇斯底里嘶吼：“别碰她！我杀了你！”
+ 
+可一切都是徒劳。
+ 
+麢抬手，指尖汇聚起澄澈威严的往生白光，不带丝毫波澜，精准落在失明少女的眉心。
+ 
+少女身躯猛地一震，瞬间失去所有力气，软软倒落在冰冷地面，再也无声息。
+ 
+“不——！！”
+……
+ 
+天光破晓，晨阳温柔洒落暖融融的卧室。
+ 
+暖光铺满柔软床铺，床上的少女缓缓睁开双眼。
+ 
+那双沉寂了八年的眼眸，清亮通透，黑白分明，再也无半分晦暗。
+ 
+一道雪白轻盈的身影纵身一跃，乖巧落在枕边，是一只通体雪白、软乎乎的小猫，亲昵的蹭着她的脖颈，温软软糯。
+ 
+少女眼底漾满温柔笑意，抬手轻轻抚摸猫身，语气慵懒清甜：“好痒呀，小白。”
+ 
+她将圆滚滚的白猫小心翼翼抱入怀中，指尖轻轻戳了戳它的脑袋，眉眼弯弯：
+ 
+“你呀你，圆滚滚的，肯定又偷偷偷吃小鱼干了。”
+ 
+阳光正好，岁月温柔。
+人妖殊途的双向奔赴。牵引的线叫＂爱＂
+ 
+猫以九条命倾覆血海，以身替家，执执念渡她长夜无光；
+人以一颗心深藏真相，以命抵罪，用余生换它一世安生。
+ 
+最深情的报恩，是燃尽九命护你长大。
+最温柔的救赎，是舍却凡身成全余生。
+ 
+大梦一场
+所有血色与恸哭都归于晨光，所有牺牲与深爱都藏于寻常。
+
+那些没说出口的谢谢，没来得及的道别，没被看见的滚烫真心，
+都化作了往后余生，每一次温柔蹭怀，每一场朝夕相伴。
+ 
+万般皆苦，唯你是甜。
+`, authorNote: ["开放式结局",
+"或许是麢施法治了女生的眼睛，他还是软了心，放过了小白一命，让她们一人一猫相守相伴",
+"或许是小白最后一条命给了女生，并治好了女生，麢依旧软了心，帮助小白成为了普通小猫，相守相伴","反正我们麢就是人冷心热"] },
+ { title: "假面", images: ["https://imgbed.heliar.top/i/hqIpk-6QlZ6J4c0g_IMG_2862.jpg",
+"https://imgbed.heliar.top/i/IpSXwC-ybXe2WQFY_IMG_2863.jpg",
+"https://imgbed.heliar.top/i/b_EpVTVfVk0hIG5L_IMG_2864.jpg",
+"https://imgbed.heliar.top/i/LGwd-1JtnBp8VdRQ_IMG_2865.jpg",
+"https://imgbed.heliar.top/i/f5FhAX6UQYgNR6Au_IMG_2866.jpg",
+"https://imgbed.heliar.top/i/ZsZWDdpXNL40Ipaq_IMG_2868.jpg"], content: `麢站在街边，一身黑色风衣银灰色碎发垂在额前，周身带着一股生人勿近的冷意。
+
+他本只是路过此地，处理一缕逃窜出来的残碎阴魂，目光无意间被墙上一张旧寻人启事勾住。
+ 
+纸张边角卷翘，字迹透着少年人的无助。八岁女孩小雅，在念秋福利院失踪四个月，她的姐姐还一直在四处寻找。
+ 
+来往路人路过，看过之后纷纷叹息，紧接着便是一片夸赞。
+“也就苏念秋心地善良，堂堂豪门大小姐，愿意费心照料这些无家可归的孤儿。”
+“经历过那样伤心的事还能心怀善意，实在太难得了。”
+ 
+苏念秋，在这座城市几乎就是善良的代名词。
+ 
+她是苏家独生女，家境优渥，长相温婉漂亮。
+读书的时候，她经常去福利院做义工，格外照顾一个叫林知晚的孤女。
+林知晚自幼被抛弃，性格自卑内向，总是缩在角落，不敢和旁人说话。
+ 
+是苏念秋一直护着她。
+旁人嘲笑林知晚出身卑贱，苏念秋总会第一时间站出来替她解围，带她见识外面的世界。
+
+后来一对普通好心夫妇收养了林知晚。
+苏念秋依旧时常上门探望接济，两人亲如姐妹，旁人都感叹林知晚何其幸运，能遇见苏念秋这束光。
+ 
+可三年前一场河边意外，打碎了这份美好。
+ 
+外界流传的故事很简单：深秋傍晚，二人在河边谈心，矛盾爆发。
+长久活在苏念秋光环之下的林知晚内心彻底失衡。
+她嫉妒苏念秋拥有的一切，家世、容貌、众人的喜爱。
+就连自己悄悄爱慕的少年沈聿，满心满眼也只有苏念秋。
+ 
+妒火积压多年，争吵拉扯之间，林知晚情绪失控失足落入湍急河水，连尸骨都没能打捞上来。
+ 
+自此所有人都认定，是林知晚心胸狭隘，辜负了别人的善意，毁在了自己的嫉妒手里。
+ 
+幸存下来的苏念秋，成了全城人心疼的对象。
+ 
+她从来不曾诋毁过世的闺蜜半句，年年前去祭拜，总是满心愧疚。
+更是为了纪念林知晚，她出资创办念秋福利院，收留流离失所的孩子，把全部温柔给到这些孤苦孩童。
+沈聿心疼她的遭遇，陪伴她整整三年，两人也快要定下婚约。
+ 
+大度、深情、慈悲，这就是大众眼中毫无瑕疵的苏念秋。
+ 
+麢冷眼望着眼前一派祥和，见多了世间离合的他心里清楚，人世间太过完美的好人，往往藏着不为人知的伪装。
+ 
+他伪装成前来了解公益的访客，留下来暗中调查。
+ 
+福利院的员工、志愿者、老街坊、苏家的旧仆，所有人的说辞几乎一模一样。
+从前苏念秋明媚心软，林知晚敏感阴郁，再好的善意也捂不热一颗充满怨恨的心。
+ 
+三年前河边没有目击者，没有尸体，所有经过，都来自苏念秋的口述，没有人去怀疑她的眼泪。
+ 
+但麢还是捕捉到诸多不对劲的细节。
+ 
+近几个月，福利院好几名无亲无故的流浪孩童接连失踪，最后全部被简单记录成贪玩走失，草草结案，根本没人深挖下落。
+ 
+其次，若是林知晚当年溺水身亡，河边理应残留魂魄消散的痕迹，可那片河畔干干净净。
+ 
+收养林知晚的那对养父母，三年前忽然彻底断了所有联系，人间蒸发，所谓回乡养老，更像是被人彻底抹去。
+ 
+还有苏念秋本人。
+岁月会在每个人身上留下痕迹，唯独她，外表愈发精致动人。
+可眼底深处，常年压着一层挥之不去的阴冷
+ 
+白日的福利院，阳光明媚，院子里到处都是孩童嬉笑打闹的声音。
+ 
+苏念秋身着一身素色长裙，气质恬静柔和，蹲在地上轻声安抚哭闹的小孩子，一举一动，皆是慈悲得体。
+ 
+见到陌生的麢，她站起身浅浅微笑，语气礼貌温和：“先生，是想要咨询捐助相关的事情吗？”
+ 
+“我看到寻人启事，听说这里时常有孩子走失。”麢语气平淡。
+ 
+就这么一句话，苏念秋眼尾瞬间泛红，愧疚与自责恰到好处地浮现在脸上，情绪真实得挑不出破绽。
+ 
+“是我没有尽到看护的责任。”
+她声音微微发颤
+“我开办这家福利院，本就是想要弥补心中的遗憾，我明白无家可归有多难熬。可我连最好的朋友都没能留住，又怎么能够护住所有孩子。”
+ 
+提起林知晚，她满眼怅然难过。旁边的工作人员连忙上前宽慰，个个都为她的善良感到惋惜。
+
+夜幕降临，喧闹的福利院归于死寂。
+ 
+麢施展回溯之法，拨开被时光掩埋的过往，一桩桩诡异的真相慢慢浮出水面。
+ 
+三年前的河边，没有死亡，没有溺水挣扎，意外从头到尾都是谎言。
+ 
+城市一处幽暗夹缝之中，封印着一缕高贵干净的魂魄。
+——那才是真正的苏念秋，日复一日被困于此，只剩无尽绝望。
+ 
+福利院地下，暗藏一座不停运转的邪阵，悄无声息吸食孩童的灵魂、元气与寿命。
+ 
+养父母旧居，苏家老宅，都留有魂魄被瞬间撕碎吞噬的残留印记。
+ 
+层层迷雾已经铺展完毕，麢指尖浮起一层银色微光，被掩埋三年的真相，彻底大白。
+ 
+所有人全部被蒙在鼓里，善恶生死，完全被颠倒。
+ 
+心地纯粹、真心相待朋友的，是真正的苏念秋；
+满心扭曲、贪得无厌、恩将仇报的，是真正的林知晚。
+ 
+曾经苏念秋毫无保留地善待她，可林知晚心底从未生出感激，只剩下无尽嫉妒。
+她厌恶自己出身卑微，嫉妒苏念秋拥有的一切，把别人的善意当成施舍，把他人的幸福视作对自己的羞辱。
+ 
+疯狂滋生的欲望，引来了游荡在世间的恶灵。
+这恶灵不食血肉，专门吞噬灵魂贪念为生。
+它缠上林知晚，日夜不停蛊惑。
+告诉她，苏念秋拥有的一切，本就该属于她。
+ 
+良知一点点被彻底磨灭，林知晚布下一场精心策划的局。
+ 
+三年前的河畔，她装作情绪崩溃，求苏念秋陪自己喝下一碗静心符水。
+心地善良的苏念秋满心心疼，没有半分防备，一饮而尽。
+ 
+符水入体，恶灵催动禁术，一场偷天换日的夺舍就此完成。
+ 
+林知晚舍弃自己原本的躯体，强行抢占了苏念秋的容貌、身份、家世，接管了她完整的人生。
+ 
+自此，千金皮囊之下，藏着的是林知晚阴毒的灵魂。
+真正的苏念秋神魂被剥离，囚禁在永无止境的黑暗结界，不死不灭，却也永远无法轮回解脱。
+ 
+而林知晚最残忍的地方，不在于夺舍，而在于折磨。
+ 
+她没有毁掉苏念秋的魂魄，而是把她困在结界，强迫她亲眼目睹一切。
+看着自己的身体被别人占用
+看着父母疼爱凶手
+看着家业被肆意享用
+看着心爱之人与凶手相守
+而自己，还要背负善妒疯魔的骂名，被世人唾弃。整整三年，日日皆是凌迟。
+ 
+靠着这份怨恨与贪念，她和恶灵共生，邪气一日强过一日。
+ 
+苏家奶奶最先察觉异样，孙女模样没变，可神态、习惯、心性早已判若两人。
+某个深夜，老人撞见结界缝隙，听见真正苏念秋的哭泣，正要揭穿这场骗局。
+ 
+林知晚没有半分犹豫，痛下杀手，将老人的魂魄喂给恶灵，彻底封住秘密。
+ 
+养父母是她灰暗人生里为数不多的温暖。
+可当二老发现她修炼邪术、残害孩童，含泪劝她迷途知返时，已经彻底魔化的林知晚早已不念半分养育恩情。
+ 
+她亲手杀害养父母，吞噬魂魄，对外只轻描淡写对外宣称两位老人回乡养老。
+ 
+为了永久守住偷来的青春与荣华，她打着纪念闺蜜的旗号建起福利院，专门收留那些没有家人、无人过问的流浪孩童。
+ 
+白天，她是受人敬重、慈悲善良的福利院主人；深夜，地下邪阵缓缓运转，收割孩子们鲜活的灵魂与寿命，滋养自己，喂养恶灵。那些失踪的孩子，根本不是跑丢，全部都成了她维持虚假人生的祭品。
+ 
+三年光阴，她瞒住了整座城市。
+ 
+真相被揭开的那一刻，狂风呼啸而起，房屋震颤，阴风阵阵，无数冤魂的呜咽从地底翻涌上来。
+ 
+那张温婉优雅的脸剧烈扭曲，皮肤之下隐隐透出林知晚原本阴鸷的轮廓，双眼漆黑，没有一丝光亮，她仰头疯狂大笑，声音尖锐刺耳。
+ 
+“凭什么？凭什么她生来就应有尽有，我生来就一无所有！我只是拿回属于我的人生，我到底错在哪！”
+ 
+伴随着她的嘶吼，寄生三年的恶灵冲破全部束缚。
+滚滚黑雾直冲夜空，遮蔽月色，无数漆黑粗壮的触手从黑雾当中迸发，裹挟无数亡魂的怨气，朝着麢狠狠砸来。
+
+麢伫立在风暴中央，衣袂被狂风吹得猎猎作响，银发凌乱飞扬，眼底只剩冰冷的审判。
+ 
+铺天盖地的黑雾席卷而至，他身形一闪，化作一道残影，指尖银光迸发，不断击碎袭来的邪物。
+恶灵不甘，汇聚全部怨念凝成一柄漆黑巨镰，带着毁天灭地的力量劈砍而下。
+ 
+金光与黑雾猛烈相撞，巨大的轰鸣响彻长夜，院内地砖裂开，树木尽数折断。
+ 
+依靠三年人命滋养，恶灵的攻势狂暴凶狠，黑雾缠绕上来，企图吞噬麢的神魂。
+林知晚也借着残存的邪气扑杀过来，招招都要置人于死地。
+ 
+一人一灵拼命反扑，可邪终究压不过正。麢的力量沉稳克制，每一次出手，都在净化怨气，打散黑雾。
+一番缠斗过后，恶灵力量消耗殆尽，本体摇摇欲坠。
+ 
+麢一掌震飞林知晚，手中凝聚出轮回长枪，银白枪芒划破沉沉黑夜。
+ 
+他没有先处理已经失去力量的林知晚，祸源不除，冤孽难消。
+他纵身跃入翻滚的黑雾之中，一枪刺穿恶灵的本源。
+ 
+凄厉的尖啸响彻天地，漫天黑雾轰然消散，蛊惑无数人心、沾满罪孽的恶灵彻底灰飞烟灭。
+ 
+恶灵消亡，所有邪术瞬间失效。林知晚重重跪倒在地，借来的贵气容貌一点点衰败干裂，她原本扭曲的魂魄直接暴露出来。
+ 
+她望着麢，满是不甘，嘶哑地辩解：“我只是想好好活下去，过上像样的日子，这也有错吗？”
+ 
+“想要好好活着，从来不是罪过。”
+麢的声音冷冷落下，不带一丝怜悯
+“可你为了自己的光鲜，毁掉所有善待你的人。＂
+＂受人恩惠却背信弃义＂
+＂得到温暖反而烧毁灯火＂
+＂用一条条无辜性命堆砌自己的荣华＂
+＂这不是求生，是作恶。”
+＂你罪恶滔天＂
+＂无可饶恕＂
+枪尖微光一闪。
+ 
+数不尽的罪孽在此刻清算，林知晚的魂魄烟消云散，永世不得轮回。
+ 
+困住苏念秋的结界随之破碎，一缕柔和干净的魂魄缓缓飘出，历经三年折磨，依旧澄澈如故。积压许久的冤屈，终于得以洗清。
+ 
+待到破晓天明，朝阳洒满福利院的庭院。
+孩子们照常追逐欢笑，一切看上去和往日没有半点区别。
+ 
+城里的百姓依旧在传颂苏念秋的善良大义，没有人知晓昨夜那场生死厮杀，也无人了解这三年埋藏在温柔面具之下的滔天罪恶。
+ 
+世人看见的，永远是外表、名声与眼前的圆满。只有轮回因果，会记下每一份人心善恶。
+ 
+这世间最恐怖的从来不是鬼怪妖魔。
+而是身处泥泞，得到旁人的善意救赎，却依旧贪光噬暖、恩将仇报，一步步把自己活成恶鬼的人心。
+`, authorNote: ["死去的都活不了，麢能做的是解救它们自由，送他们入往生门轮回",
+"苏回不了了，三年了，她的灵魂被救出，麢送她入了轮回",
+"有极致的善，就有极致的恶",
+"小白以命报恩，林欲念邪恶疯长 人入魔"] } ,
+{ title: "骨与血", images: ["https://imgbed.heliar.top/i/9h1meQfwr30o7vdk_IMG_2867.jpg",
+"https://imgbed.heliar.top/i/vierTys4dISpIxSy_IMG_2869.jpg",
+"https://imgbed.heliar.top/i/oJSuisCIasT5mCe__IMG_2870.jpg",
+"https://imgbed.heliar.top/i/sKrDvcbRG7vXiL0-_IMG_2873.jpg",
+"https://imgbed.heliar.top/i/x8GNoQi4xxYrh4_M_IMG_2874.jpg"], content: `老城区的雨夜，永远裹着化不开的阴雾。
+ 
+这栋老旧居民楼里，困着一缕三年不散的亡魂。
+ 
+少女林悠然死后，魂魄一直滞留生前的屋子，记忆残缺破碎。她记得自己有心疾，记得雨夜而死，记得痛苦窒息的绝望，却完全不记得是谁害死了她。
+ 
+亡魂执念锁死：找不到杀她的人，她永远无法离宅、无法渡往彼岸。
+ 
+今夜，晚风刺骨，摆渡人麢踏雾而来。
+ 
+屋内阴冷滞闷，灯光忽明忽暗。白衣少女亡魂静静伫立窗边，眼神茫然懵懂。她温顺安静，无戾气、无怨恨，只剩无尽困惑。
+ 
+她被困三年，日日复盘死亡瞬间，却始终抓不到凶手的轮廓。
+ 
+这是麢踏入房间时，看见的第一层巨大谜团。
+ 
+谁杀了她？
+ 
+整座小城，所有人都有统一答案——她的未婚夫，沈言。
+ 
+舆论如铁，三年未改。
+ 
+所有人都说，沈言薄情寡义、势利现实。
+ 
+林悠然先天心脏病，常年拖累人，医药费无底洞，身体孱弱无法成婚。两人订婚多年，沈言年轻有为、前途光明，渐渐厌倦拖累，厌弃久病的未婚妻。
+ 
+死前那夜，暴雨倾盆。
+ 
+邻居亲眼看见，沈言深夜闯入她家，两人剧烈争吵，摔门震天。争吵结束后，沈言冷漠离去。
+ 
+短短半小时后，林悠然发病坠亡屋内。
+ 
+所以世人定论：沈言逼死了她。
+ 
+是他厌弃、绝情、争执刺激，诱发她心脏病爆发，狠心弃她不顾，任由她病发孤独坠楼惨死。
+ 
+三年来，沈言背负负心汉、杀人凶手的骂名，被全城唾骂、被亲友割裂、被万人诟病。
+ 
+连林悠然残缺的亡魂潜意识里，也认定了这个答案。
+ 
+麢初勘因果，眼前线索全部指向沈言。
+ 
+哭闹争执、雨夜独处、事后冷漠离场、久病拖累的现实矛盾。
+ 
+一切证据闭环，完美指向未婚夫行凶。
+ 
+林悠然亡魂望着麢，眼神茫然又委屈，声音轻飘飘像雾：
+“是他吗？……是沈言不要我，逼死我的吗？”
+ 
+她困了三年，痛苦了三年，怨了三年。
+ 
+她记得最后那场争吵，记得刺耳的决裂话语，记得心脏炸裂般的剧痛。
+ 
+她以为，最爱她的人，最后亲手杀了她。
+ 
+麢眼底轮回微动，暂时颔首：线索指向他。
+ 
+只要坐实沈言罪责，便可了结因果，渡她往生。
+ 
+可越查，越诡异。
+ 
+谜团，层层浮现。
+ 
+麢溯回时光残影，窥见三年过往。
+ 
+世人嘴里薄情寡义的沈言，实则爱得偏执又虔诚。
+ 
+所有人只看见那一夜的争吵，无人看见争吵背后的真相。
+ 
+林悠然病重加重，急需一笔大额手术费救命。哥哥林望百般推脱，拒绝出钱，甚至逼迫林晚主动退婚，不要拖累家里、不要拖累哥哥前途。
+ 
+林望告诉妹妹：你久病不治，配不上沈言，别耽误别人一生。
+ 
+他一遍遍洗脑、施压、逼迫。
+ 
+那夜争吵，从不是沈言厌弃她。
+ 
+是沈言坚决不肯退婚，执意要倾尽家产、也要带她做手术、娶她回家。
+ 
+所谓的争吵，是他对抗全世界的坚持。
+ 
+他吵得凶狠，是在替她争命、争名分、争余生安稳。
+ 
+世人看错了全部。
+ 
+三年污名，他全盘承受，从未辩解一字。
+ 
+只因林望苦苦哀求他：一旦澄清，所有人会怀疑林家、怀疑兄长，会毁了死去妹妹的名声。
+ 
+沈言爱她至深，为保她死后体面，甘愿背负千古骂名，从不辩驳，任由万人唾弃。
+ 
+他是唯一愿意倾尽一切、拿命救她的人。
+ 
+第一层反转轰然落地，颠覆所有认知。
+ 
+最像凶手的人，是最爱她的人。
+ 
+那真正害死林悠然的人，到底是谁？
+ 
+迷雾更深，疑点重重。
+ 
+屋内另一道活人气息，缓缓浮出水面——她的亲哥，林望。
+ 
+在外，他是全城歌颂的绝世好兄长。
+ 
+父母早亡，长兄如父，数年含辛茹苦，省吃俭用，拼命打工养着病弱妹妹，受尽苦难，不离不弃。妹妹死后，他悲痛欲绝、年年悼念、守着空房、深情隐忍。
+ 
+所有人心疼他、敬佩他、怜悯他。
+ 
+连残缺的林悠然亡魂，潜意识里依旧依赖、信任自己的哥哥。
+ 
+这是最完美、最无懈可击的第二层假象。
+ 
+可麢轮回眼破开虚妄，撕开人皮假面，终极真相、真正凶手，彻底曝光。
+ 
+真正杀了林悠然的，从来不是未婚夫。
+ 
+是她倾尽信任、依赖一生的亲哥——林望。
+ 
+一切悲剧，源于人心贪婪入骨。
+
+ 真相——
+父母离世曾留下巨额财产：林悠然在世，保险金归林望林悠然终身支配；林悠然一死，保险永久作废，留百分之三十于哥哥林望，其余尽数捐赠。
+
+林望不甘，更恨父母不平等。
+所以
+他编造一切
+给自己塑造身份人设
+
+他不愿妹妹死，舍不得断掉那些财源。
+
+更不愿真心花钱救她。
+怕她病好后争夺财产。怕她死后财产捐赠。
+更是欺她瞒她哄她签下人身巨额意外险。
+ 
+多年来，他克扣药物、拖延复查、刻意消耗她生机，吊着她一口气，吸食她性命换钱，塑造伟大兄长人设，博取名利同情。
+ 
+那夜暴雨，沈言执意要带林悠然做手术，要彻底治好她。
+ 
+一旦病愈，保险合约自动失效，林望的财源彻底断绝。
+ 
+这是他绝对不能接受的事。
+ 
+于是，他在沈言走后，悄悄进入妹妹房间。
+ 实施了他的计划
+
+他掐断林悠然最后一点希望，故意撤掉急救药物，冷漠看着病发倒地的妹妹。
+ 
+她撕心裂肺呼救、哭着喊哥。
+ 
+他站在一旁，冷眼旁观，全程无动于衷。
+ 
+亲手放任她窒息、绝望、死去。
+ 
+他借沈言争吵的幌子，完美掩盖自己的谋杀。
+又伪造她因病发坠楼而亡的现场
+他面无表情抱起妹妹林悠然的身体，从楼梯上抛下。
+
+这一切结束后
+他继续虚伪的扮演，一个感人至深的好哥哥角色。
+给她最盛大的葬礼
+
+让全世界怀疑唾骂深情未婚夫，自己干干净净，坐拥美名与数不尽的钱财。
+ 
+真相大白的瞬间，屋内阴冷雾气剧烈翻涌。
+ 
+一直懵懂茫然的林悠然亡魂，破碎的记忆瞬间归位。
+ 
+她想起了。
+ 
+全部想起来了。
+ 
+那晚沈言是为救她争吵。
+ 
+那晚真正冷眼旁观、看着她活活死去的，是她最信任、最依赖的亲哥哥。
+ 
+温柔、呵护、疼爱、牺牲。
+ 
+全是假的。
+ 
+数年陪伴，全是算计。
+ 
+血脉亲情，全是贪婪。
+ 
+她怨错了人，误会了最爱她的人，依赖了最恶的人整整一生。
+ 
+极致的悲凉瞬间吞没亡魂。
+ 
+她单薄的身躯剧烈颤抖，无声落泪。三年迷雾困魂，三年自我内耗，三年错恨深情之人。
+ 
+麢声音清冷落雨般回荡屋内：
+“世人骂薄情者最深情，世人赞守护者最恶毒。”
+ 
+“你困于此三年，寻凶手渡魂。”
+“如今真相落地，执念尽散。”
+ 
+窗外雨停雾散，往生白光温柔笼罩少女亡魂。
+ 
+她最后望向人间，望向那个背负污名三年、从不辩解的爱人，望向那个衣冠楚楚、贪婪噬亲的兄长。
+ 
+爱恨清零，恩怨落幕。
+ 
+误会蚀骨，人心最寒。
+ 
+雾魂终解，亡魂得渡。
+ 
+人间留下无尽讽刺——
+深情者背负骂名，作恶者一生安稳。
+被误解的人最爱她，被信任的人杀了她。
+
+屋内阴雾散尽，雨夜终霁。
+ 
+唯独人间的罪孽，尚未清算
+ 
+天道渡善，绝不纵恶。
+ 
+林望伪装数年的温柔兄长人设、隐忍深情的假面，在因果轮回面前寸寸崩碎，所有藏在血脉里的贪婪、冷漠、阴毒，无所遁形。
+ 
+渡魂结束，便是惩恶之时。
+ 
+证据顺着天道因果尽数浮现。
+多年克扣药物、拖延治疗、刻意耗损妹妹生机的记录完整显现；
+哄骗林悠然签下巨额意外险的合同白纸黑字；
+雨夜撤掉急救药、冷眼旁观亲妹窒息惨死的全部真相，一一落地成证。
+ 
+天网恢恢，从无遗漏。
+ 
+短短数日，全城哗然，舆论彻底颠覆。
+ 
+那个被所有人歌颂、怜悯、敬佩的绝世好兄长林望，一夜之间跌落神坛。
+ 
+所有伪善面具被撕碎，多年精心营造的人设轰然崩塌。
+ 
+曾经万人唾骂的负心汉沈言，沉冤得雪。
+三年污名一朝洗尽，世人终于知晓，那个被骂薄情寡义的男人，才是全世界最爱林悠然、最想救她、甘愿为她背负一生骂名的深情之人。
+ 
+而人人称赞的长兄，竟是蚕食亲妹性命、谋财害命、冷血弑亲的真凶。
+ 
+真相公开的那一刻，整座老城一片死寂。
+ 
+随之而来的，是法律的雷霆审判。
+ 
+庭审之上，铁证如山。
+蓄意谋害至亲、骗取保险、故意放任病患死亡、伪造现场误导舆论，桩桩件件，罪无可赦。
+ 
+林望全程面如死灰，再无往日半分温良隐忍。
+所有伪装尽数剥落，只剩骨子里的阴鸷与贪婪。
+ 
+最终判决落下——
+林望，蓄意故意杀人罪成立，情节极其恶劣，弑亲悖伦，罔顾人伦，判处死刑。
+ 
+尘埃落定，善恶终有报。
+ 
+行刑前夕，阴冷囚牢之中，四壁荒芜死寂。
+林望蓬头垢面，眼神空洞，早已没了昔日光鲜体面。
+ 
+幽暗光影里，一道黑衣身影无声而来。
+ 
+麢缓步立于他面前，眼底无悲无喜，只剩轮回亘古不变的冰冷审判。
+ 
+林望猛地抬头，浑身颤抖，声音嘶哑破碎，带着极致的恐惧与癫狂：“是你……是你毁了我……”
+ 
+麢静静俯视着罪孽满身的人，声音清冷低沉，穿透死寂的囚牢，字字诛心，落地铿锵。
+ 
+“你的人生，从来无人毁你。”
+“是你的贪婪、你的自私、你的弑亲恶念，亲手毁了你自己。”
+ 
+他目光沉沉，望着濒临毁灭的罪人，道出阴阳两界的终极宣判。
+ 
+“林望。”
+“你的罪，阳间律法已经替你清算。”
+“死刑落地，人间的罚，到此为止。”
+ 
+话音一顿，轮回眼底微光骤冷，寒意浸透骨髓。
+ 
+“但你要记住。”
+“阳间的了结，只是开端。”
+“阴间的罪罚，还从未开始。”
+ 
+林望瞳孔骤缩，浑身剧烈颤抖，无尽的绝望死死吞噬他的神智。
+ 
+麢的声音不高，却带着跨越生死、贯穿轮回的威压，缓缓落下。
+ 
+“我会在轮回之境等你。”
+“好好记住你今日犯下的所有血债。”
+“准备好，迎接你本该承受的、永无停歇的阴间炼狱惩罚。”
+ 
+“我们，很快会再见。”
+ 
+人间正义已然落幕，可属于恶人的炼狱，才刚刚拉开序幕。
+
+骨生贪，血藏恶。
+人心幽暗，远比雨夜阴雾更可怖。
+ 
+轮回有序，善恶有终。
+所有逃得过人间律法的算计，
+永远逃不过，天道轮回的清算。
+`, authorNote: ["＂最可笑从无外人加害，害我的，是同源骨血、同脉至亲。我们连着最亲的骨与血，却隔了最深的善恶，凉透了最近的人心。＂",
+"＂他可是我亲哥哥啊＂"] } ,
+{ title: "照相馆", images: ["https://imgbed.heliar.top/i/LsIAZlAGzgo6uLvX_IMG_2871.jpg",
+"https://imgbed.heliar.top/i/01VRKSNXZRVbhA90_IMG_2872.jpg"], content: `城市老巷深处，藏着一家无人知晓底细的老式照相馆。
+ 
+门面陈旧斑驳，木质招牌褪色发白，常年落着一层薄灰。整条老街唯独这里阴气沉沉，白日无光，晚风穿巷而过，都带着一股凝滞的冷。
+ 
+没人知道，这家看似普通的照相馆，藏着一件摄命诡物。
+ 
+一台年代久远的老式胶片相机。
+ 
+寻常相机定格人间光景，可这一台，定格的从来不是容颜，是人命寿元。
+ 
+凡是踏入馆内拍照的年轻女孩，镜头一闪，皮囊无恙，笑容依旧，可无形之中，半生寿命会被瞬间剥离、吸食、封存进厚重的相册里。
+ 
+日复一日，岁岁蚕食。
+ 
+等到寿命被彻底抽空的那一刻，活人便会无声无息消失在世间，最后只剩下相框里一张黑白肃穆的遗照。
+ 
+人消影存，魂入相片，永世禁锢。
+ 
+午后阴翳，麢缓步踏入这条老巷。
+ 
+他一身黑衣，碎发覆着眼帘，周身清冷克制，白昼人格的冷静法则深植骨血。作为不入三界、超脱轮回的摆渡人，他对世间一切邪祟异动，感知从无偏差。
+ 
+整条巷子死气沉沉，唯独照相馆内，萦绕着密密麻麻、微弱细碎的生魂气息。
+ 
+鲜活、年轻、却在急速凋零。
+ 
+太不对劲了。
+ 
+寻常阴物只吞魂噬怨，可这里，是在活生生偷取活人的寿命。
+ 
+麢推门而入。
+ 
+店内光线昏暗，窗帘常年紧闭，空气潮湿发闷。墙面挂满精致写真，每一张照片里的女孩都笑容明媚、青春鲜活。
+ 
+可麢的轮回眼底，看得一清二楚。
+ 
+这些看似漂亮的写真，底色全是死气。
+ 
+每一张照片背后，都压着半截残缺的寿命，每一个笑脸之下，都是被透支、被掠夺、正在缓缓死去的活人。
+ 
+柜台后坐着一个温和儒雅的中年男人，是照相馆的老板。他眉眼平和，待人客气，看起来老实本分，没有半分恶相。
+ 
+普通、无害、平平无奇。
+ 
+这是所有人第一眼的观感，也是最完美的假象。
+ 
+老板抬眸浅笑，语气温和：“拍照吗？我这里拍的片子，最衬年轻人。”
+ 
+麢淡淡垂眸，没有应声。
+ 
+轮回眼静静扫过柜台深处那台老式相机。机身陈旧，镀漆剥落，镜头深邃漆黑，像一只永不闭合的眼，静静俯瞰人间，悄无声息收割人命。
+ 
+无数细碎的寿元气流缠绕机身，密密麻麻，触目惊心。
+ 
+麢瞬间摸清因果。
+ 
+老板偶然所得这台邪物老相机，摸索出诡异用法——以他人寿元续命，摄生人之命，补己身之枯。
+ 
+他靠着这台相机，长年窃取年轻女孩的寿命，一点点续着自己的命，苟活至今。
+ 
+店内厚厚的相册，不是作品陈列，是累累命债。
+ 
+每一页，都是一条被掠夺、被蚕食、被葬送的鲜活人生。
+ 
+麢转身离去，眼底冷意沉凝。
+ 
+他查到，明日清晨，会有一个叫苏晓冉的女生如约前来拍照。
+ 
+这是她预约好的时间，也是她命运的劫点。
+ 
+只要她踏入店内，按下快门，她半生寿元便会被瞬间抽走。若无人阻拦，不出七日，她会被相册彻底吞噬，人间蒸发，最终化作一张冰冷的遗照，永远留在这间阴馆里。
+ 
+一夜转瞬即逝。
+ 
+次日清晨，天光微亮，巷口风凉。
+ 
+苏晓冉背着书包，眉眼干净，带着少女独有的鲜活朝气，一步步朝着照相馆走来。她满心欢喜，只想拍一组好看的写真，从未想过，这一步踏的，是索命深渊。
+ 
+巷口阴影处，麢静静伫立。
+ 
+他身姿挺拔，清冷孤绝，无声拦住了少女的去路。
+ 
+“别进去。”
+ 
+声音清淡，却带着不容置喙的笃定。
+ 
+苏晓冉一愣，茫然抬头：“为什么？我预约好了拍照的。”
+ 
+“里面的照片，留不住风景，只会毁了你”
+ 
+麢字字平静，却戳破了这间照相馆最阴毒的真相。
+ 
+少女半信半疑，却莫名心底发寒，下意识停下了脚步。
+ 
+就在这时，照相馆门口，一个单薄的白色身影快步跑出。
+ 
+是个身形纤弱、面色苍白的小姑娘，看着不过十几岁，脸色病态惨白，眼底藏着化不开的疲惫与隐忍。
+ 
+她快步走到苏晓冉面前，声音轻轻的，带着一丝恳求：“姐姐，别进去拍照，真的别进去。”
+ 
+她语气急切，满眼真诚，没有半分恶意。
+ 
+苏晓冉接连被两人阻拦，彻底打消了进店的念头，道谢后转身离开。
+ 
+一旁的麢冷眼旁观。
+ 
+两个年纪相仿的女孩，温柔劝阻，他下意识以为只是好心提醒的陌生同学，并未放在心上。
+ 
+可他不知道，这一瞬的温柔阻拦，是整个故事最深的伏笔，也是唯一的人性微光。
+ 
+拦下女孩、断了摄命源头，时机刚好。
+ 
+麢不再停留，转身踏入照相馆。
+ 
+店内空无一人，老板不知去向，只余下那台静静蛰伏的老式相机，依旧散发着幽幽死气。
+ 
+所有罪孽的根源，都在这一台机器身上。
+ 
+麢抬手，掌心凝出凛冽冰冷的轮回长枪，银白枪芒在昏暗店内格外刺眼。
+ 
+枪口稳稳对准漆黑镜头，寒意彻骨。
+ 
+就在他准备扣动扳机的瞬间——
+ 
+“咔嚓。”
+ 
+突兀的快门声，骤然在死寂的店内响起。
+ 
+清脆、冰冷、猝不及防。
+ 
+无人触碰，相机自动按下快门。
+ 
+一道暗光瞬间席卷而过，直直落在麢身上。
+ 
+空气骤然凝滞。
+ 
+若是普通人，这一刻早已神魂入镜、寿元尽失。
+ 
+麢微微垂眼，看向镜头，唇角勾起一抹极淡、极冷的嗤笑。
+ 
+眼底没有慌乱，只有全然的不屑与威压。
+ 
+他见过三界邪祟，渡尽世间亡魂，从未有何物，敢反向摄他。
+ 
+“区区凡物，也敢拍我？”
+ 
+“胆大妄为，不知死活。”
+ 
+话音落定，枪光骤起。
+ 
+凛冽银芒轰然炸开，精准贯穿相机机身。
+ 
+一声刺耳碎裂声响彻屋内，伴随黑烟四起，缠绕机身数年的阴邪之力瞬间崩碎、溃散、殆尽。
+ 
+邪相机彻底碎裂报废，化作满地残片。
+ 
+下一秒，奇迹骤现。
+ 
+店内墙面、相册、相框里，无数鲜活的少女照片，以肉眼可见的速度褪去色彩、褪去人影，一张张变成彻底的空白。
+ 
+数年被掠夺、被封存、被蚕食的寿元气息，尽数挣脱禁锢，漫天飘散，归还给人间，归还给原本的主人。
+ 
+因果逆转，邪力尽消。
+ 
+远处暗处，照相馆老板浑身猛地一震，口吐黑血，踉跄倒地。
+ 
+相机是他续命根基，是他一身邪力来源。
+ 
+根基被毁，反噬即刻降临。
+ 
+数年掠夺的万千寿元瞬间剥离，所有罪孽反噬其身。
+ 
+他皮肉极速干瘪、枯萎、塌陷，血肉层层褪去，转瞬从一个儒雅中年人，化作一具干枯嶙峋的人骨空壳。
+ 
+魂魄被瞬间抽离躯体，悬于半空，承受无边业火灼烧。
+ 
+满身罪孽，尽数清算。
+ 
+麢缓步走出店门，瞥了一眼暗处形同干尸的躯壳，眼底无波无澜。
+ 
+自作孽，不可活。
+ 
+阳间律法管不住的阴私恶行，自有天道因果清算。
+ 
+他无意多管，任由其自生自灭。
+ 
+本以为，这只是一桩寻常的摄命邪案，恶人贪生怕死、掠夺人命、终遭反噬、罪有应得。
+ 
+可真正的真相，在这一刻，缓缓揭开第二层温柔又残忍的反转。
+ 
+那个方才在门口苦苦劝阻路人、面色苍白的小姑娘，是老板的独生女。
+ 
+她天生身患绝症，药石无医，命数早定，时日无多。
+ 
+老板半生勤恳，唯独放不下这个从小体弱、命途多舛的女儿。
+ 
+他偶然得到这台摄命相机，发现可以夺人寿元、延续生机。
+ 
+他从未贪图自己长生安稳，从未贪恋世间荣华。
+ 
+他所有的阴私、所有的恶行、所有的掠夺，从来不是为了救自己，只是为了续命救女。
+ 
+他看着日渐消瘦、步步濒死的女儿，走投无路，别无选择。
+ 
+一边是无数陌生女孩的寿命，一边是自己唯一女儿的性命。
+ 
+被绝境逼疯的父亲，终究选择了最错的那条路。
+ 
+数年以来，他背负满身罪孽，藏起所有温柔，独自承受阴邪反噬、日夜煎熬，默默做尽恶人，只为多换女儿一日平安、一日呼吸。
+ 
+可女儿心思通透、心底善良，早早便知晓了所有真相。
+ 
+她知道父亲为了救她，在偷偷掠夺别人的寿命，在用旁人的命，续她的命。
+ 
+她夜夜难安，满心愧疚与煎熬。
+
+
+她身患绝症，本就命该如此，绝不愿以万千无辜之人的性命，苟活自己余生。
+ 
+她无数次哭着劝父亲收手，恳求他放过别人、也放过自己。
+ 
+可执念太深的父亲，早已深陷泥潭，再也听不进任何劝阻。
+ 
+父爱偏执又沉重，疯狂又极端，哪怕背负千古骂名、永世罪孽，也要强行留住她。
+ 
+父女二人无数次争执、拉扯、崩溃。
+ 
+父亲死死护住她，拦住她所有想要坦白、想要赎罪的念头，一意孤行，不肯回头。
+ 
+他可以背负所有恶名、所有罪孽、所有反噬，只求女儿活着。
+ 
+可他不知道，他温柔护着的女儿，早已悄悄选择了大义。
+ 
+今日清晨，是她偷偷提前守在巷口。
+ 
+是她抢先一步，拦住了即将入店拍照的苏晓冉。
+ 
+是她默默阻止了新一轮的罪孽诞生。
+ 
+也是她，用自己微弱的力量，间接给了麢摧毁邪物、终结因果的机会。
+ 
+她不想死，她眷恋父亲的温柔疼爱。
+ 
+可她更不想，自己的余生，沾满无数陌生人的鲜血与寿命。
+ 
+不久后，女孩得知了父亲惨死反噬、魂飞魄散的消息。
+ 
+小小身躯瞬间崩塌，无声痛哭，肝肠寸断。
+ 
+她怨过父亲的恶，却更懂父亲的难。
+ 
+他是世人眼中摄命害人的恶魔，却是这辈子，唯一拼尽一切、哪怕堕入地狱也要护她活着的父亲。
+ 
+一念贪生，满门皆罪。
+ 
+一念向善，救赎终临。
+ 
+风吹老巷，空荡寂静。
+ 
+所有摄命相片尽数空白，所有掠夺寿元尽数归还，所有阴邪罪孽尽数落幕。
+ 
+麢立在巷尾，望着远处痛哭的少女，眼底清冷微动。
+ 
+世人善恶从来非黑即白。
+ 
+最恶的恶行里，藏着最沉的父爱；最柔软的善良里，藏着最痛的身不由己。
+ 
+有人为命作恶，满身罪孽；
+ 
+有人为善舍命，一身通透。
+ 
+人间万般执念，皆为牵绊。
+ 
+可因果轮回，从来慈悲，也从来公允。
+ 
+可怜，可悲，亦可敬。
+`, authorNote: ["1. 老板＂如果重来一次，我还会那么做＂＂我只要我的女儿活着＂","麢＂你的女儿是女儿＂＂别人的女儿就不是女儿吗？＂","＂你是一个合格的父亲＂＂你更是一个绝对的恶人＂",
+"2.麢对上一只几千年的魔物，满眼不屑＂什么东西＂＂也配跟我相提并论＂抬头冷嗤＂吾 当诛之＂",
+"3. 麢抬手一个巴掌虚空甩在它脸上，＂吵死了＂微皱的眉头带着审判者与生俱来的气压＂别找死＂",
+"4. “区区凡物，也敢拍我？”", 
+"“胆大妄为，不知死活。”", 
+"话音落定，枪光骤起。", 
+"凛冽银芒轰然炸开，精准贯穿相机机身。", 
+"一声刺耳碎裂声响彻屋内，伴随黑烟四起，缠绕机身数年的阴邪之力瞬间崩碎、溃散、殆尽。", 
+"邪相机彻底碎裂报废，化作满地残片。",
+"5. 当被说没有确切罪证不敢动手奈我何时，麢抬枪正中对方眉心，白光吞噬散尽，连话语都还没完全说出口，原地只剩虚妄，＂藐视审判法则＂＂当诛＂",
+"6. ＂对我不敬＂＂该死＂＂魂飞魄散＂"] } ]
+  },
+  {
+    name: "灵魂往生者 第二季", 
+    cover: "https://imgbed.heliar.top/i/wx8XRr4_fUcFIBfQ_IMG_2875.jpg",
+    stories: [ { title: "循环", images: ["https://imgbed.heliar.top/i/wx8XRr4_fUcFIBfQ_IMG_2875.jpg",
+"https://imgbed.heliar.top/i/lC9CRu4w0oFUhkT7_IMG_2876.jpg",
+"https://imgbed.heliar.top/i/knDU9WxPTUhNsRKp_IMG_2877.jpg",
+"https://imgbed.heliar.top/i/rzKK6gTH9xXh4hmn_IMG_2878.jpg",
+"https://imgbed.heliar.top/i/c55X2b7cxEu0bsFg_IMG_2879.jpg",
+"https://imgbed.heliar.top/i/8MkolTtVCKkVFTh__IMG_2880.jpg",
+"https://imgbed.heliar.top/i/w6b6A2J7nhLGaxXz_IMG_2881.jpg",
+"https://imgbed.heliar.top/i/mGuawL23y24oh1l2_IMG_2882.jpg"], content: `凌晨十二点，钟声落地。
+ 
+晨光老小区彻底沉入死寂。
+ 
+楼龄近三十年的旧楼墙体斑驳，楼道漆黑，声控灯早已报废，只有月光从窗台斜切进来，在层层台阶上割出冰冷的明暗交界。
+这里大半住户早已搬离，仅剩几户老人固守。
+八年以来，午夜六楼的孩童数数声，是整片小区挥之不去的梦魇。
+ 
+听过那声音的人，不止一人凭空失踪。
+活不见人，死不见尸。
+ 
+陆冷刚搬来。
+ 
+他是全职恐怖悬疑小说博主，探地无数，素材早已枯竭。
+听闻这片无人敢碰的都市怪谈，他毫不犹豫租下五楼，赌一场能救他数据的真实灵异。
+ 
+房间潮湿阴冷，霉味浓重。
+陆冷架好摄像机，原本只当是网友夸张杜撰，直到那道声音清晰穿透门板的一刻，他浑身血液骤然变冷。
+ 
+“一、二、三、四、五、六、七……”
+ 
+孩童的声音，伴着轻轻的蹦踏声，从顶楼缓缓落下。
+ 
+不幻听、不杂音、无比真切。
+ 
+恐惧瞬间攥紧喉咙，但博主本能压过了退缩。
+ 
+独家、真实、无解怪谈。
+ 
+这是他熬了半年都等不到的顶级素材。
+ 
+陆冷咬着牙抓起相机，摸黑推开房门，踏入漆黑楼道。
+阴风骤起，他伸手理了理发型
+＂ 发型不能乱＂
+夜风灌进衣领，台阶层层向上，像通往未知的黑洞。
+他越往上走，那道孩童数数声越是清晰，诡异得令人头皮发麻。
+ 
+即将抵达六楼转角时，一道黑影骤然拦在前方。
+ 
+男人立在暗光里，身形挺拔，黑衣冷白肤，眉眼极淡，周身透着生人勿近的清冷气场，仿佛本身就不属于这片污浊老旧的人间。
+ 
+陆冷脚步骤停，心脏狠狠一跳，差点脱手摔了相机。
+ 
+“窝烤  谁？！”
+ 
+那人垂眸看他，声音低沉平静，没有波澜：“别上去。”
+ 
+“上面的东西，不是你能拍的”
+ 
+陆冷惊魂未定，强装镇定打量对方，还试图自我合理化：“同行？探灵博主？哥们儿你这氛围感拉得也太满了，这妆造比我还专业。”
+ 
+麢淡淡扯了下唇角，没有笑意：“我不是人。”
+ 
+陆冷：“……啊？”
+ 
+他第一反应是对方整活剧本，紧绷的神经瞬间松了半截，甚至有点想笑：“哥们，内卷也不用这样吧？装鬼神设博流量？这招我早就用过了”
+ 
+麢没空陪他贫嘴，目光穿透黑暗，落在六楼密闭的楼梯间深处。
+ 
+这里盘踞着一股极重的执念。
+ 
+不是厉鬼怨气，是无尽等待的执念。
+ 
+深沉、纯粹、扭曲，硬生生在普通居民楼里撑开了一片小型闭环空间。
+八年里所谓的“失踪案”，根本不是鬼怪杀人，而是闯入者被执念磁场卷入时空裂隙，掉入的午夜循环。
+ 
+普通人长期被困，会彻底消散生机。
+ 
+麢是人间摆渡人，掌引渡、规整阴阳秩序。今夜这股骤然暴涨的念力，直接勾动了他的秩序感知，引他跨界而来。
+ 
+“这里有个孩子。”麢出声，“死在了你站的地方”
+ 
+陆冷愣住，玩笑话卡在喉咙。浑身冰冷。
+ 
+头顶，小女孩的数数声依旧循环往复，一遍又一遍。
+ 
+“怎么？”麢指尖凝出浅白灵光，轻轻覆在六楼入口，一道隐形结界无声成型，“怕了？”
+＂她不害人＂
+＂她只是太孤独＂
+ 
+结界暂时锁死空间裂隙，隔绝外溢念力，不再吞噬路人。
+也暂时护住小女孩魂体，避免她执念溃散、彻底消亡。
+ 
+做完一切，麢转头看向彻底僵住的陆冷。
+ 
+陆冷看着他凭空施术的一幕，脑子轰然空白，两年探灵生涯、无数所谓“真实灵异”瞬间沦为笑话。
+ 
+他磕磕巴巴：“你你你、你真不是人类？”
+ 
+“灵执人，引渡往生者，灵魂摆渡人。随你怎么叫”麢言简意赅。
+ 
+陆冷三观原地重组。
+ 
+他一直拍鬼、找鬼、靠鬼吃饭，直到今天才真正见到鬼怪与秩序本身。
+ 
+震惊过后，他居然莫名亢奋：“那我这波是真·撞大运！全网第一个拍到灵执人实况的博主？！”
+ 
+麢淡淡瞥他：“命大，还顾着流量。”
+ 
+陆冷收敛嬉皮，正色追问：“那这孩子到底怎么死的？八年不停数数、蹦台阶，为什么不肯往生？还有那些失踪的人呢？”
+ 
+“失踪者都活着。”麢道出真相，“只是被卷入她的执念空间，困在午夜楼梯循环里，出不来、走不掉。她以为有人来陪她玩，其实只是执念扭曲了现实。”
+ 
+两人顺着残留灵韵回溯，很快查清旧档案。
+ 
+八年前，六楼住户，一对夫妻，六岁女儿，意外身亡于此。
+ 
+如今夫妻早已搬离老破小区，定居市中心顶级江景豪宅。
+ 
+豪宅明亮奢华、干净冰冷，毫无烟火温度。
+ 
+女主人玲玉坐在落地窗前，身形单薄枯瘦，脸色惨白无神。
+八年过去，她没有半分走出丧女之痛的迹象，整个人像一具被抽走魂魄的躯壳，沉静得近乎死寂。
+
+男主人推门进来，西装得体、外貌儒雅体面。
+可看见两人的瞬间，眼底飞快掠过一抹惊慌，随即被强行压平，换成礼貌疏离。
+ 
+“两位有事？”
+ 
+麢直问：“八年前，你女儿的死因。”
+ 
+男人脸色瞬间僵硬。
+ 
+方才的温和尽数褪去，他下意识挡在妻子身前，动作是护住，更是禁锢隔绝。
+ 
+“意外而已。陈年旧事，没必要再提。”他语气骤然强硬，“我妻子经不起刺激，请你们离开，不要打扰我们生活。”
+ 
+过度的回避、过度的遮掩、过度的保护。
+ 
+越是干净利落的封口，越是欲盖弥彰。
+ 
+陆冷和麢对视一眼，疑点彻底坐实。
+ 
+这场所谓的“意外”，绝对另有隐情。
+ 
+两人没有硬逼，顺势离开。夜色深沉，真相藏在平静的豪宅表象之下。
+ 
+而当晚，深夜两点。
+ 
+陆冷收到自己装在老小区楼下的监控推送。
+ 
+漆黑画面里，一道纤细身影徒步走进旧楼道。
+ 
+是玲玉。
+ 
+她瞒着丈夫，独自折返废弃老小区，沉默走上五楼，蜷缩坐在楼梯转角，一动不动。
+ 
+整整一夜。
+ 
+不上去六楼，不离开五楼，不远不近，僵在原地，像一场经年不变的守灵。
+ 
+连续几晚，皆是如此。
+ 
+陆冷看得后背发凉：“她每晚偷偷跑来守楼梯？为什么不上六楼？她不敢？”
+ 
+麢望着黑暗深处，轮回之眼终于缓缓揭开全盘真相。
+ 
+八年前的傍晚。
+ 
+六岁的小女孩独自在楼梯玩耍，喜欢一边蹦台阶、一边认真数数。
+ 
+一、二、三、四、五、六、七。
+ 
+那天阳光很好，她开开心心重复最爱的游戏，天真以为数完七阶，妈妈就会像往常一样下楼牵她回家。
+ 
+她踩上第七阶的瞬间，脚下一滑，重心失衡，整个人从高层台阶翻滚坠落。
+ 
+当场毙命。
+ 
+无凶手，无谋害，无争执。
+ 
+真的是纯粹的意外。
+ 
+可悲剧，从死后才真正开始。
+孩子死后，玲玉彻底崩溃，精神濒临崩塌。她无法接受女儿就这么没了，无法接受小小的孩子独自摔死在冰冷楼梯间。
+ 
+而孩子的父亲，重男轻女，本就对女儿冷淡淡薄。
+女儿离世后，他没有半点愧疚怜惜，只觉得晦气、碍事，一心只想翻篇重生。
+ 
+为了所谓香火、所谓体面、所谓家族延续，他强行带走崩溃的玲玉，逼她走出悲痛、逼她备孕二胎。
+ 
+他威胁她：不配合、不生儿子，就送她进精神病院，锁一辈子。
+ 
+他控制她的生活、隔绝她的回忆、切断她所有念想。
+ 
+玲玉挣扎、反抗、提离婚，全部无效。
+ 
+她人被带走、被软禁、被操控，心却永远留在了那栋旧楼的楼梯间。
+ 
+于是她养成了夜夜偷跑的习惯。
+ 
+凌晨趁丈夫熟睡或加班不在，独自回到老小区，坐在五楼楼梯间。
+ 
+她永远不敢上六楼，永远不敢踩第七阶。
+ 
+因为她心底藏着最自私、最懦弱、也最深情的执念——
+ 
+只要我不踏上那一步。
+只要我不亲眼确认。
+只要我不上去和她相见。
+ 
+我的孩子就还没真的走。
+她还在等我。
+她还活着。
+ 
+一旦相见，执念破局，梦境崩塌，她就必须彻底承认：
+ 
+女儿真的死了。
+ 
+永远消失，再也回不来。
+ 
+八年。
+ 
+母女二人，被两道执念生生拆分在同一栋楼的两层楼梯。
+ 
+小女孩魂体停留在死亡当天，记忆定格在玩耍等待里。
+ 
+她每天夜里数台阶、蹦台阶、等妈妈来接。
+ 
+她一直在等一个永远不会上来的妈妈。
+
+而玲玉坐在五楼，夜夜凝望、夜夜相守，永远不敢上前，永远不敢相认。
+ 
+一个在上等，一个在下守。
+ 
+两两相望，两两无期。
+ 
+双向执念扭曲空间，锁死整片楼道，形成无尽午夜循环。
+ 
+那些失踪的路人，从来不是被害。
+ 
+只是误入了母女俩八年无解的悲伤里，被永恒的等待困住。
+ 
+真相彻底揭开的一刻，整段诡异怪谈瞬间褪去恐怖，只压得人喘不过气
+ 
+陆冷沉默很久，喉咙发涩。
+ 
+“原来是这样……根本没有鬼故事。从头到尾，只是两个不肯放下的人。”
+ 
+次日，麢独自登门豪宅。
+ 
+面对依旧逃避麻木的玲玉，他平静开口，字字清晰、句句戳心。
+ 
+“你以为你在守她。”
+ 
+“其实，你在困她。”
+ 
+“你的执念锁住她八年，不让她往生、不让她解脱、不让她自由。你不敢面对真相，就拖着你的孩子陪你困在长夜。”
+ 
+玲玉浑身剧烈颤抖，眼泪瞬间崩落，八年伪装的平静彻底碎裂。
+ 
+“我没有……我只是舍不得她……我不敢……我一认，她就真的没了……”
+ 
+“你不肯见她，她才永远孤独。”麢声音温和却坚定，“她等了你八年，每天数台阶、每天盼你接她回家。”
+ 
+“放下你的自欺。让她见你最后一面，让她圆满，让她走。”
+ 
+一语击穿所有禁锢。
+ 
+当晚，午夜十二点。
+ 
+晨光老小区，结界缓缓消散，扭曲空间逐渐平复。
+ 
+玲玉终于鼓起勇气，一步一步踏上那层她八年不敢触碰的台阶。
+ 
+六楼楼梯间，小女孩小小的身影一遍遍蹦跳数数，稚嫩依旧，孤单依旧。
+ 
+“一、二、三、四、五、六、七——”
+ 
+她转头。
+ 
+看见了站在台阶尽头、泪流满面的妈妈。
+ 
+那一刻，循环终止。
+ 
+八年长夜，终于破晓。
+ 
+小女孩睁着干净的眼睛，轻轻笑了。
+ 
+她等到她的妈妈了。
+ 
+玲玉蹲下身，颤抖着伸出手，泪如雨下，哽咽不成声：
+ 
+“妈妈来了……对不起，妈妈来晚了。”
+ 
+小小的魂魄扑进她怀里，温暖、轻盈，像迟到八年的拥抱。
+ 
+执念瓦解，心结落地。
+ 
+孩子等到了归途，妈妈放过了自己，也放过了孩子。
+ 
+夜色温柔，楼道寂静，纠缠八年的双向执念，终于在此刻圆满消散。
+ 
+小女孩笑着闭上眼，魂魄化作点点微光，温柔飘散，奔赴新生轮回。
+ 
+所有被困在循环里的路人，同步回归现实世界。
+ 
+旧楼怪谈，从此彻底绝迹。
+ 
+陆冷站在楼下，抬头看着渐渐恢复正常的老旧楼栋，轻声感慨：
+ 
+“原来最吓人的鬼故事，从来都不是鬼神。”
+ 
+“是放不下的人，和过不去的遗憾。”
+ 
+麢立在晚风里，望着渐渐归于平静的人间夜色，眼底掠过一抹浅淡悲悯。
+ 
+阴阳有序，执念无常。
+
+这世间最深的恐怖，从来源于人心。
+ 
+循环终解，长夜落幕。
+`, authorNote: ["1. 执念织成长夜，困住相逢，也困住告别",
+"世间万般鬼事，源头从来都是不肯放下的人心",
+"轮回不息，唯有释怀，方能破局",
+"2. 玲玉(是妈妈困住了你 也困住了妈妈自己   再见 我的宝贝 妈妈永远爱你 )",
+"3. 小女孩(妈妈 我数完台阶了 现在 我要去很远很远的地方啦 妈妈 我也永远爱你)",
+"4. 陆冷( 我要保存下来这些镜头)"] },
+  { title: "蝶骨", images: ["https://imgbed.heliar.top/i/_vPbKFCsZ9yMNAMg_%E6%88%AA%E5%B1%8F%202026-11-19%2011.12.18.png",
+"https://imgbed.heliar.top/i/XVHSAf48HXSNHWfE_%E6%88%AA%E5%B1%8F%202026-11-19%2011.13.19.png",
+"https://imgbed.heliar.top/i/lqUknlyh3_0NQQvK_%E6%88%AA%E5%B1%8F%202026-11-19%2011.13.48.png",
+"https://imgbed.heliar.top/i/fPEDWJayjdqRsGFT_%E6%88%AA%E5%B1%8F%202026-11-19%2011.14.14.png",
+"https://imgbed.heliar.top/i/_NWaytFLqLgXsTRJ_%E6%88%AA%E5%B1%8F%202026-11-19%2011.14.40.png",
+"https://imgbed.heliar.top/i/kNkihLcPj-U3XgqD_%E6%88%AA%E5%B1%8F%202026-11-19%2011.15.01.png",
+"https://imgbed.heliar.top/i/tvsED2Hj34JDwFTn_%E6%88%AA%E5%B1%8F%202026-11-19%2011.16.24.png",
+"https://imgbed.heliar.top/i/MgwTv2nzOo1BH_8O_%E6%88%AA%E5%B1%8F%202026-11-19%2011.19.01.png",
+"https://imgbed.heliar.top/i/n-qMaDlQoyDwDIhg_%E6%88%AA%E5%B1%8F%202026-11-19%2011.20.09.png",
+"https://imgbed.heliar.top/i/-M-v3mnZgl_Vt2_n_%E6%88%AA%E5%B1%8F%202026-11-19%2011.20.39.png",
+"https://imgbed.heliar.top/i/xr6zTmt58FcuWiPl_%E6%88%AA%E5%B1%8F%202026-11-19%2011.21.20.png"], content: `民国十七年，烽烟漫过江南半城。
+ 
+乱世最不值钱的是人命，最奢侈的是相守。
+ 
+苏家是书香世家，温润清雅。
+苏晚卿生得眉眼温婉，性子柔软，是养在温室里最干净的月光。
+沈砚之年少执掌兵权，双手沾满鲜血，却唯独把所有温柔都给了她。
+
+两人自幼定亲，青梅竹马，一纸婚约拴了十余年光阴。
+
+世人皆说，冷面阎王沈少帅这辈子唯一的软肋，就是苏家小姐苏晚卿。
+ 
+从前岁月安稳时，他总爱待在苏家的庭院里，看她执笔画山水，看她临水绣繁花。
+春日折一枝海棠插在她发间，冬夜握着她微凉的手暖在掌心。
+他说等乱世平定，便卸了兵权，弃了纷争，十里红妆，许她一世安稳，从此山野炊烟，朝夕相伴。
+ 
+苏晚卿信了，岁岁年年，满心期许。
+ 
+可乱世无情，从不会善待圆满。
+ 
+一夜腥风，军阀混战牵连世家，苏家满门惨遭屠灭。
+烈火焚了宅院，鲜血浸透青石板，昔日温婉书香的苏府，一夜之间沦为人间炼狱。
+ 
+是沈砚之踏着火海闯进来的。
+ 
+彼时火光滔天，尸横遍野，年少的少帅浑身是血，劈开层层厮杀，在堆满尸体的庭院角落，找到了瑟瑟发抖、浑身沾满亲人鲜血的苏晚卿。
+ 
+彼时她不过十七岁，一夜之间，家破人亡，世间亲人，尽数凋零。
+ 
+沈砚之脱下染血的军装，裹住她冰冷颤抖的身子，将她死死护在怀里，声音沙哑，字字沉重，立下誓言：“晚卿，别怕，有我在，苏家没了，我便是你的家。”
+ 
+那之后，苏晚卿便被沈砚之带在身边。
+ 
+杀伐四起的督军府，成了她唯一的容身之地。
+旁人都怕沈砚之的狠戾，唯独苏晚卿知道，这个手握生杀大权的男人，把所有的偏爱与温柔，都给了她一人。
+ 
+他戒了烟酒，推了所有风月应酬，日日归府陪她。
+怕她怕黑，夜夜守在隔壁书房，灯烛彻夜不熄；怕她触景伤情，遣散府中所有旧人，重新布置庭院，栽满她从前最爱的海棠；乱世物资匮乏，但凡寻到的软糯糕点、珍稀糖酪，尽数堆在她窗前。
+ 
+世人皆羡苏晚卿，身陷绝境，仍得良人不离不弃。
+ 
+可有人，却恨极了这份圆满。
+ 
+林知鸢，是常年跟在沈砚之身边的世家旁支小姐，半生爱慕，半生追逐。
+ 
+她看着沈砚之纵横沙场、锋芒万丈，看着他冷对万人、铁石心肠，却唯独对苏晚卿温柔缱绻、百般纵容。
+她爱慕了他十几年，倾尽所有卑微讨好，换来的永远是他的淡漠疏离。
+ 
+凭什么？
+ 
+凭什么苏晚卿不过是一个家破人亡的孤女，就能占据他全部的真心？
+凭什么乱世浮沉，万人争抢的沈少帅，唯独对她俯首温柔？
+ 
+嫉妒像毒藤，日夜啃噬她的心肺，一点点扭曲了她的本心，将她彻底拖入疯魔。
+ 
+她不甘心，她要取而代之。
+ 
+寻常的算计离间，根本拆不开情深至此的两人。
+于是林知鸢走遍荒山野岭，寻访隐世邪师，触碰禁忌歪术，沾染阴邪之气，甘愿以身饲魔，坠入鬼道。
+ 
+她偏执地认定，只要苏晚卿死了，她就能留在沈砚之身边，拥有那份独一无二的温柔。
+ 
+日复一日，她修习邪术，神魂被戾气浸染，眉眼间的少女温婉尽数褪去，只剩扭曲的阴狠。
+她筹谋许久，布下逆天夺舍大阵，赌上自己半生修为、半条性命，只为夺了苏晚卿的身子，顶替她的人生。
+ 
+那是一个细雨绵绵的寒夜。
+ 
+督军府海棠落尽，湿气浸骨。
+苏晚卿佩戴着自幼贴身、苏家代代相传的白玉佩，安静卧在榻上。
+那玉佩温润通透，藏着苏家百年福泽，更是锁住轮回记忆的结界。
+ 
+林知鸢终于动手了。
+ 
+阴气席卷整座院落，黑雾穿窗而入，缠上苏晚卿的四肢百骸。
+榻上的少女骤然窒息，心口剧痛，眉眼瞬间失了血色，温热的身躯一点点变得冰凉。
+ 
+夺舍之术残酷至极，是硬生生碾碎原主魂魄，鸠占鹊巢。
+ 
+林知鸢站在阵中，发丝凌乱，双目赤红，周身黑气翻涌，笑得癫狂又偏执：“苏晚卿，你的命，你的爱人，你的一切，从今往后，都是我的了。”
+ 
+她看着榻上少女气息渐断，魂魄摇摇欲坠，心中狂喜不已，即刻催动全部妖力神魂，朝着苏晚卿的躯体冲去，欲彻底占据这具身躯。
+从此以她的模样，伴在沈砚之身侧，岁岁年年，永不分离。
+ 
+可就在她神魂入体、即将扎根的刹那，苏晚卿胸口的白玉佩骤然亮起柔和清光。
+ 
+白光骤然炸开，裹挟着林知鸢的魂魄，强行将她拉入一片无边幻境。
+ 
+天地静谧，山河古旧，并非民国烟火，而是千年前的旧世光景。
+ 
+幻境之中，一面古朴铜镜悬于虚空，镜面澄澈，照见轮回所有真相，照见她穷尽一生、疯魔争抢的所有荒唐。
+ 
+铜镜映出的，不是今生阴狠偏执的林知鸢，而是一位眉眼清朗、身姿挺拔的白衫少年。
+ 
+那是她的上一世。
+ 
+千年前，她是栖身山野的少年郎，是苏晚卿前世唯一挚爱，是护她一生、爱她入骨的心上人。
+ 
+那时的苏晚卿，是世间最明媚的姑娘，却身中无解蚀骨奇毒，药石无医，命不久矣。
+天下名医束手无策，唯有一种上古毒引，可解她周身剧毒，可此毒霸道诡谲，触碰者必遭反噬，神魂俱损，形体异变。
+ 
+无人敢试，无人愿舍。
+ 
+唯独他。
+ 
+少年爱她至深，甘愿以身饲毒，以自身神魂血肉为祭，以身试遍万千剧毒，硬生生炼化毒引，尽数渡入自己体内，为她解了缠身绝症。
+ 
+剧毒反噬惊天动地，毁了他男儿骨血，碎了他本来形体。
+ 
+他渡劫失败，神魂受损，身躯蜕变，生生从一介清朗少年，化作了半生流离、不得归期的蝴蝶女妖。
+ 
+他拼尽一切，换她安然无恙，换她岁岁无忧。
+ 
+她活了下来，眉眼依旧明媚，性命得以保全，却唯独忘了他。
+ 
+忘得干干净净，一丝痕迹未留。
+ 
+而他，神魂重创，记忆破碎，在无尽剧痛中失去所有过往，与痊愈后的她彻底走散。
+ 
+两人坠入无边虚空，卷入六道轮回，历经数世浮沉，彻底错开了彼此的轨迹。
+ 
+他带着残破的妖魂、零碎的执念，在世间漂泊千年，轮回辗转，最终化作今生的林知鸢，成了一个偏执爱而不得的女子。
+ 
+千年执念刻入神魂，她早已不记得前尘过往，不记得那场以身殉爱的牺牲，不记得自己曾为护她，散尽一切、万劫不复。
+ 
+她只剩心底一份说不清道不明的执念，本能地追逐着苏晚卿，本能地执着于她身边的人。
+ 
+于是今生，她成了爱慕沈砚之、痛恨苏晚卿的疯魔女子。
+ 
+她拼尽妖力，残害自己护了一世、爱了千年的心上人。
+ 
+她费尽心机，杀掉了自己舍命相救、倾尽所有守护的姑娘。
+ 
+幻境崩塌，铜镜碎裂。
+ 
+林知鸢的魂魄被狠狠震出躯体，悬浮在半空，千年轮回的记忆汹涌而来，与今生的偏执恨意狠狠冲撞。
+ 
+前世少年的赤诚温柔、以身殉毒的剧痛、千年流离的孤寂、今生疯魔扭曲的嫉妒、亲手杀人的残忍……
+两段人生、两种情绪、极致的爱与极致的恶，瞬间重叠炸裂。
+ 
+她僵在半空，浑身颤抖，神魂剧烈撕裂，痛得几乎溃散。
+ 
+原来如此。
+ 
+原来她恨了一辈子、害了一辈子的人，是她拼尽轮回、舍命守护的挚爱。
+ 
+原来她疯魔争抢、不择手段想要拥有的圆满，是她亲手毁掉的、自己千年前用性命换来的安稳。
+ 
+荒谬，可笑，刺骨的悔恨与绝望，瞬间淹没了她所有神智。
+ 
+“不是的……不可能……”她声嘶力竭，魂魄颤抖溃散，满眼猩红，“是幻境！是假的！是有人算计我！！”
+ 
+就在此时，清冷悠远的风声穿破黑雾，一袭黑衣的摆渡人麢立在虚空尽头，周身雾霭沉沉，淡漠俯瞰着这场荒唐轮回。
+ 
+他声线无波，道破所有真相，字字诛心：“轮回无假，执念无妄。你前世为她化妖，失身失忆，漂泊千年；今生执念错位，因妒成魔，亲手弑她。一切因果，皆是你命数，无人算计，皆由自择。”
+ 
+一句话，彻底击溃了林知鸢最后的防线。
+ 
+她疯了。
+ 
+彻彻底底，神魂俱疯。
+ 
+千年赤诚深爱，换来今生亲手屠戮。她跨越轮回的执念，从守护变成加害，从挚爱变成死敌。
+
+楼下传来急促沉稳的脚步声。
+ 
+是沈砚之。
+ 
+他察觉院中阴气诡异、生机消散，抛下军务匆匆归来。
+一身戎装的少帅推门而入，看见榻上毫无生机、容颜惨白、已然没了气息的苏晚卿，铁血半生的男人，第一次双腿发软，浑身冰冷。
+ 
+他踉跄扑到榻边，颤抖着抱住她冰凉的身子，声音破碎哽咽，带着从未有过的惶恐：“晚卿……睁眼看看我……别睡……”
+ 
+铁血少帅，泪落沾襟，绝望浸透骨髓。
+ 
+这一幕，狠狠刺入林知鸢的神魂。
+ 
+一边是她亲手害死的、千年挚爱的苍白尸体，一边是她执念半生、求而不得的心上人悲痛欲绝的模样。
+ 
+极致的悔恨、痛苦、愧疚、绝望，交织成无尽炼狱，将她寸寸凌迟。
+ 
+她终于幡然醒悟。
+ 
+她错得彻底，错得离谱，错得跨越千年、无可挽回。
+ 
+她不该恨，不该妒，更不该亲手终结自己拼尽一切护下来的性命。
+ 
+千年妖寿，轮回执念，半生疯魔，到头来只剩一场彻骨的笑话。
+ 
+虚空之中，林知鸢看着相拥悲泣的两人，神魂渐渐平静，褪去所有疯魔戾气，只剩无尽温柔与虔诚的成全。
+ 
+她看向身侧静默伫立的麢，声音轻柔却决绝：“我愿散尽千年妖寿，毁尽自身神魂灵核，以我轮回所有修为，换她一命重生。”
+ 
+“从此世间再无林知鸢，再无蝶妖，前尘后世，彻底消散，不入轮回，不留痕迹。”
+ 
+“只求她活。只求他二人，岁岁安稳，相守圆满。”
+ 
+“求你，永远不要告诉她真相。不要让她记得，曾有一人，爱她千年，害她一次，终以命赎罪。”
+ 
+麢默然颔首。
+ 
+天道轮回，因果终偿。
+ 
+话音落，林知鸢周身泛起细碎蝶光，千年妖力尽数剥离，残破神魂寸寸消融。
+漫天蝶影纷飞，散尽所有戾气与执念，化作最纯粹的生机灵力，尽数涌入苏晚卿冰凉的躯体。
+ 
+黑雾散尽，邪气褪尽。
+ 
+榻上原本死寂的少女，指尖微微一颤，绵长的呼吸缓缓复苏，苍白的眉眼，渐渐染上鲜活的血色。
+ 
+心跳重启，魂魄归位。
+ 
+她活过来了。
+ 
+而那个跨越千年、为爱成妖、为爱疯魔、最终为爱寂灭的人，彻底消失于天地之间。
+ 
+无碑，无迹，无轮回，无来生。
+ 
+……
+ 
+苏晚卿缓缓睁开眼时，窗外细雨初歇，天光微亮。
+ 
+她只觉心口微微发闷，像是做了一场冗长空洞的噩梦，梦醒无痕，无悲无喜。
+ 
+入目是沈砚之通红的眼眸，是他失而复得、颤抖拥住她的温柔。
+ 
+他紧紧抱着她，仿佛抱住了整座乱世唯一的光，嗓音沙哑哽咽：“没事了，晚卿，没事了。”
+ 
+她懵懂抬眸，伸手抚上他的眉眼，轻声问：“我睡了很久吗？”
+ 
+沈砚之低头吻她发顶，压下心底莫名的空落与酸涩，温柔轻声：“只是睡了一觉，我一直在。”
+ 
+往后余生，烽烟散尽，乱世终平。
+ 
+沈砚之护着他的小姑娘，岁岁年年，安稳相守，圆满一生。
+ 
+无人知晓，曾有一场跨越千年的暗恋，始于以身殉爱的赤诚，终于神魂俱灭的成全。
+ 
+无人知晓，曾有一只漂泊千年的蝴蝶妖，错入轮回，爱错方式，疯魔半生，最终以魂飞魄散为代价，赎了一世罪孽，成全了毕生挚爱。
+ 
+庭院海棠年年盛开，岁岁芬芳。
+ 
+唯有摆渡人麢伫立虚空，看尽人间悲欢轮回。
+ 
+世间最唏嘘的爱，从不是爱而不得。
+ 
+是我曾以命护你千年，却在轮回错局里，亲手杀了你。
+ 
+最后，以湮灭自身，换你余生圆满。
+ 
+从此山海皆静，你我再无交集。
+`, authorNote: ["1. 因为冥冥之中一切皆有定数",
+"玉佩每世都会被女主拿走，玉佩沾了灵，认主。",
+"是林以前送给女主的，所以每一世女主都会得到属于她的玉佩",
+"还有海棠花，是以前林送给女主的，给女主种了很多",
+"老铜镜也是，林以前会为女主描眉，命运弄人他们都忘了对方，可是他们的故事被玉佩和老铜镜记录了下来",
+"时间长久，老物件有了灵",
+"所以这也是林为什么会被玉佩弹开，因为玉佩是她们记忆的载体",
+"2. 老铜镜也是，林以前会为女主描眉，命运弄人他们都忘了对方，可是他们的故事被玉佩和老铜镜记录了下来，时间长久，老物件有了灵",
+"3. 还有海棠花，是以前林送给女主的，给女主种了很多",
+"4. ＂有只蝴蝶停在苏的肩头＂",
+"只有麢知道 那不是林",
+"5. 林两种记忆重合，看向被自己亲手杀死的苏，心脏像是被揪住了一样无法呼吸，她身影踉跄，那种极致的痛蔓延全身，这不是真的……这不是真的……这是假的……",
+"6. 林＂我亲手杀死了我最爱的人＂"] },
+ { title: "蝶骨番外·林执", images: ["https://imgbed.heliar.top/i/ocnYumam_QFtofHb_%E6%88%AA%E5%B1%8F%202026-11-19%2015.48.46.png",
+"https://imgbed.heliar.top/i/ouTjyCx07j3_2wR4_%E6%88%AA%E5%B1%8F%202026-11-19%2015.49.13.png",
+"https://imgbed.heliar.top/i/0zZ4F7Okl54f5ky1_%E6%88%AA%E5%B1%8F%202026-11-19%2015.49.55.png",
+"https://imgbed.heliar.top/i/MTSJpYhFH6niduwa_%E6%88%AA%E5%B1%8F%202026-11-19%2015.50.27.png",
+"https://imgbed.heliar.top/i/JuLF7rH9QkBLqZmK_%E6%88%AA%E5%B1%8F%202026-11-19%2015.51.01.png",
+"https://imgbed.heliar.top/i/nzhM-tNRjMLE5Zg8_%E6%88%AA%E5%B1%8F%202026-11-19%2015.51.33.png"], content: `或许 你曾经听说过我的故事。
+ 
+我姓林，单名一个执字。
+ 
+我爱上了一个姑娘，一个姓苏的姑娘。
+ 
+山林养我十八年，百草育我一身骨。
+ 
+世人都说林家隐世，是世外药脉，擅活死人、医白骨，掌世间最精妙的百草秘术。
+可无人知晓，深山岁月漫长清冷，我自小无伴，眼底只有四季常青的药田、岁岁不败的花海，和终年不散的山雾。
+ 
+我的性子冷，心也静。
+ 
+在遇见她之前，我以为我这一生，只会守着这片山，看花开花落，看朝暮更迭，无喜无悲，无牵无挂，直至尘归山海。
+ 
+直到那年春深，漫山芳菲压枝，我遇见了苏晚卿。
+ 
+她是闯进我孤寂岁月里唯一的人间春色。
+ 
+那日天光温柔，穿透层层林叶，她提着一只素色竹篮，弯腰采花，唇角带着浅浅笑意。风拂起她的衣袂，也拂乱了我古井无波的心。
+ 
+我长居深山，不通人情，不识情爱，从未见过这般干净温柔的人。
+ 
+那一刻，心口骤然狂跳，震得我指尖发颤。
+ 
+我不知道什么是一见钟情。
+ 
+我只知道，从我看见她笑的那一眼起，我荒芜沉寂的岁月，轰然盛开了整片花海。
+ 
+我生平第一次主动靠近生人，声音有些不自然，告诉她，这片无边花海，皆是我亲手栽种。
+ 
+我怕她看花不识草，便一一同她说。
+ 
+哪花性平温和，哪花耐寒耐霜，哪花最香，哪花最娇。
+ 
+我把珍藏多年、品相最好的花种，悉数装进她的竹篮，一颗不留。
+ 
+她抬眼看我，眉眼柔软，轻轻说了一句谢谢。
+ 
+那声谢谢，落在我心里，缠了我千年。
+ 
+她走的时候，暮色垂落山林。
+ 
+我立在花海中央，看着她的背影渐渐消失在山道尽头。
+ 
+此后日复一日，我守在花开的地方等她。
+ 
+山风来过，花期重来，草木枯荣数遍，我再也没有见过那抹素衣身影。
+ 
+我不懂相思，不懂牵挂，只知道心里空了一块，日日念念，夜夜辗转。
+ 
+初遇临别，我见她身形单薄，气息偏虚，便将祖传暖玉赠予她。
+ 
+我说：“你身子弱，此玉温脉养神，可护你安康。”
+ 
+那是我这辈子送出的第一份礼。
+ 
+也是我宿命的开端。
+ 
+我以为那一面之缘，已是此生全部缘分。
+ 
+我万万没想到，再见之时，是天意倾覆，是生死当头。
+ 
+那日风和日暖，花海如常盛放。
+ 
+可我的花海里，倒下了一身是血的苏晚卿。
+ 
+她满身污渍，衣破伤重，脸色惨白如纸，往日温柔灵动的人，此刻气息微弱，随时都会消散在春风里。
+ 
+那一刻，我十几年清冷修持尽数崩塌。
+ 
+我抱着她狂奔回药庐，指尖触到她冰凉的皮肤，心底第一次生出恐慌。
+ 
+我是林家后人，自幼通读百草毒经，通晓世间大半疑难杂症。
+ 
+可我查不出她的毒。
+ 
+那毒太邪、太寂、太无解，悄无声息蚕食五脏，腐蚀心脉，连神魂都在一点点枯朽。
+ 
+我翻遍祖屋万卷医书，熬尽珍稀药草，日夜不离，寸寸探脉，次次无功。
+ 
+万般绝境之下，我破了山林禁忌，求见隐世长老。
+ 
+长老探完她脉象，沉默良久，只叹一句天命难违。
+ 
+“此毒绝世，世间无解。”
+ 
+“中毒者不过十余日，五脏渐腐，心智渐消，最后血肉消融，化为血水，魂飞魄散。”
+ 
+我站在原地，浑身发冷。
+ 
+我问他，真的没有办法吗。
+ 
+长老看着我，字字沉重：“无解。除非——以命换命，逆天改命。”
+ 
+那一刻，我没有半分犹豫。
+ 
+我终于知晓她的来历。
+ 
+她是苏家嫡女，家族权斗惨烈，至亲尽数被毒害惨死，只剩她一人被逼追杀，身负绝世剧毒，一路逃亡，最后昏死在我的山海花田里。
+ 
+偌大人间，她无处可去。
+
+余下的十数日，我守着她，陪着她。
+ 
+病痛磨人，她日渐虚弱，却依旧温柔待我。
+ 
+绝境无生，我们相互依偎，情愫落地生根。
+ 
+我为她描眉，为她束发，看她勉强撑起笑意看我。
+ 
+无人作证，无礼无媒。
+ 
+花海为证，青山为媒。
+ 
+我与她，私定终身。
+ 
+我告诉她，我会救她。
+ 
+哪怕逆天，哪怕犯禁，哪怕身死道消。
+ 
+我翻出林家百年封禁的禁忌秘卷，寻到那唯一的逆天秘方。
+ 
+以身饲毒，以己身神魂血肉为媒介，转嫁剧毒，换对方生机。
+ 
+代价，是施术者神魂破碎，记忆尽失，命格改写，形骨重塑，万劫不复。
+ 
+族长闻讯赶来，厉声拦我。
+ 
+“你是林氏唯一正统，你会死，会魂灭，会永世不得安宁！”
+ 
+我抬头，神色平静，却决绝到底。
+ 
+“我要她活。”
+ 
+天下大道，家族祖规，万世修行，皆不如她。
+ 
+我启动秘术，以身试毒。
+ 
+剧毒侵体的那一刻，万毒噬心，经脉寸寸断裂，神魂像被碾碎成灰。
+ 
+秘术反噬、剧毒戾气、山林禁力，三者相撞，时空剧烈扭曲。
+ 
+天道不允凡人逆天改命。
+ 
+所以它毁了我。
+ 
+它碎了我所有记忆，抹掉我十八年山林岁月，抹掉我是林执的一切过往。
+ 
+它拆我男儿骨血，重塑女身。
+ 
+凡人之躯彻底剥离，被戾气与术法催生阵法，一只蝴蝶却突然闯入。
+
+至此
+我成了一只宿命飘零、无依无靠的蝴蝶女妖。
+ 
+记忆彻底消散的最后一瞬，我拼尽最后一缕残魂，彻底完成置换。
+ 
+毒入我身。
+ 
+生机归她。
+ 
+苏晚卿活了。
+ 
+可天道的惩罚，从未止于一身。
+ 
+
+时空扭曲撕裂出无边幻境，是轮回之境。
+ 
+我与她，双双卷入虚幻浮生。
+ 
+她解毒重生，却也被时空余波震碎记忆，前尘尽忘。
+ 
+而我，化作妖身，载着千年不灭的反噬，被锁进轮回。
+ 
+百年一轮，千载一渡。
+ 
+我们在虚幻轮回里辗转了近千个春秋。
+ 
+一世相逢，一世相忘。
+ 
+一世温柔，一世擦肩。
+ 
+命运反复戏弄，缘分反复拉扯。
+ 
+曾经的山林少年林执，早已在那场逆天换命的大雪里，碎骨消魂。
+ 
+千百年后，轮回尽头，我有过最后一个名字。
+ 
+林知鸢。
+ 
+到最后。
+ 
+世上再无林知鸢，再无林执。`, authorNote: ["1. 麢或许可以在林消散前为他造一个梦境，在梦里，他恢复了男儿身，走近了那片花海，前方有一抹身影背对着他","＂你终于来找我了，我在这儿，等你很久了＂身影转身，林执笑了。那是他的苏晚卿。",
+"2. 他声线无波，道破所有真相，字字诛心：“轮回无假，执念无妄。你前世为她化妖，失身失忆，漂泊千年；今生执念错位，因妒成魔，亲手弑她。一切因果，皆是你命数，无人算计，皆由自择。”",
+"3. 他知道会万劫不复，他不知道后果到底是什么，哪怕给他一百次重开的机会，他都会那么做。＂我做不到眼看着她死＂＂我会救她＂＂失败了＂＂我就陪她死＂"] },
+{ title: "入梦", images: ["https://imgbed.heliar.top/i/yZLIjZ_1MNOnZs9i_%E6%88%AA%E5%B1%8F%202026-11-19%2012.23.29.png",
+"https://imgbed.heliar.top/i/jz_jEVUbTzj3iH3Q_%E6%88%AA%E5%B1%8F%202026-11-19%2012.23.54.png",
+"https://imgbed.heliar.top/i/o5KcGtZiH80SJYJe_%E6%88%AA%E5%B1%8F%202026-11-19%2012.24.14.png",
+"https://imgbed.heliar.top/i/N1bl9x8JLeBfcwyi_%E6%88%AA%E5%B1%8F%202026-11-19%2012.24.35.png",
+"https://imgbed.heliar.top/i/8bNn-Vvwqlm3Km3C_%E6%88%AA%E5%B1%8F%202026-11-19%2012.24.52.png",
+"https://imgbed.heliar.top/i/_GtgN0Wwl7BMMK9O_%E6%88%AA%E5%B1%8F%202026-11-19%2012.25.10.png",
+"https://imgbed.heliar.top/i/v9VygAcsJdnT9OVO_%E6%88%AA%E5%B1%8F%202026-11-19%2012.25.31.png",
+"https://imgbed.heliar.top/i/iJEIBR5CWjW4s-A2_%E6%88%AA%E5%B1%8F%202026-11-19%2012.26.16.png",
+"https://imgbed.heliar.top/i/BhkK1Vb8EvIDCSbU_%E6%88%AA%E5%B1%8F%202026-11-19%2012.26.41.png",
+"https://imgbed.heliar.top/i/yD8qgwssIv-DEOCX_%E6%88%AA%E5%B1%8F%202026-11-19%2012.27.01.png",
+"https://imgbed.heliar.top/i/F_-V3u7dxq-wtFt-_%E6%88%AA%E5%B1%8F%202026-11-19%2012.27.27.png",
+"https://imgbed.heliar.top/i/zKGXPm3N5hJHNjdy_%E6%88%AA%E5%B1%8F%202026-11-19%2012.27.49.png",
+"https://imgbed.heliar.top/i/zdKoltLCO-DH5Dep_%E6%88%AA%E5%B1%8F%202026-11-19%2012.28.07.png",
+"https://imgbed.heliar.top/i/CbxIc_zJS-9PElmH_%E6%88%AA%E5%B1%8F%202026-11-19%2012.28.43.png",
+"https://imgbed.heliar.top/i/Y5wiRA0h2QhTJP4R_%E6%88%AA%E5%B1%8F%202026-11-19%2012.29.14.png",
+"https://imgbed.heliar.top/i/joGSJrnhVogz_sS-_%E6%88%AA%E5%B1%8F%202026-11-19%2012.29.42.png",
+"https://imgbed.heliar.top/i/vZ1sYBqOkvDiB7ao_%E6%88%AA%E5%B1%8F%202026-11-19%2012.30.04.png",
+"https://imgbed.heliar.top/i/OyV_V2lWObikeKQV_%E6%88%AA%E5%B1%8F%202026-11-19%2012.30.39.png",
+"https://imgbed.heliar.top/i/12bcZtB1ywOYPrf-_%E6%88%AA%E5%B1%8F%202026-11-19%2012.30.58.png",
+"https://imgbed.heliar.top/i/eC7LyPt6ZsHTx8a2_%E6%88%AA%E5%B1%8F%202026-11-19%2012.31.16.png",
+"https://imgbed.heliar.top/i/_42sKAahxvKyv2QW_%E6%88%AA%E5%B1%8F%202026-11-19%2012.31.37.png",
+"https://imgbed.heliar.top/i/DHzEgCIdO5MUDbuP_%E6%88%AA%E5%B1%8F%202026-11-19%2012.32.04.png",
+"https://imgbed.heliar.top/i/vTPKEkZwjbLeSPZa_IMG_2896.jpg"], content: `整整一月，知夏都被困在一场无解的梦魇里。
+ 
+梦境固定在一座废弃私立医院。
+惨白脱落的墙皮、潮湿死寂的长廊、挥之不去的铁锈混着消毒水的腐冷气味，冷风穿堂呜咽，压得人心神俱寒。
+ 
+梦里她只能不停奔跑。
+ 
+身后跟着一名戴口罩的医生，步伐缓慢却带着绝对掌控的压迫感，无论她怎么逃窜，距离永远无法拉开。
+一旦被抓到，刺骨针管、冰冷器械、无休止的活体折磨便会接踵而至。
+梦里的痛感太过真实，魂魄被剥离的空洞酸胀，日日刻在神经之上。
+ 
+每一次天光破晓，知夏都会冷汗浸透、惊悸惊醒。
+长期的阴梦纠缠蚕食神志，让她日渐虚弱恍惚，整个人被无形阴翳牢牢裹住。
+
+午后闹市人潮喧嚣，知夏想借人间烟火压下心底寒意，独自出门散心。
+她心绪纷乱走神，转身时不慎撞上一道冷峭挺拔的身影。
+ 
+“抱歉。”
+ 
+抬头瞬间，她撞进一双看透阴阳、沉寂无波的黑眸。
+ 
+麢立在人流之中，周身隔绝俗世喧闹，气质孤绝寒凉，是游走两界、执掌轮回审判的摆渡人。
+ 
+仅是擦肩一瞬，他眸底骤然凝色。
+ 
+知夏的魂魄外层，缠绕着一层厚重黏腻的阴煞黑气，根深蒂固，绝非偶然沾染。
+这是长期被阴灵锁魂、怨念侵体的征兆，再持续下去，她终将魂魄耗竭、灯枯油尽。
+ 
+麢视线穿透虚妄，望向她身后的虚空阴影。
+ 
+一抹猩红静静蛰伏。
+ 
+红衣曳地，怨气滔天，煞气凛冽，是阴阳两界人人忌惮的红衣厉鬼。
+ 
+麢指尖微聚灵力，欲勘破因果。可那红衣阴灵警觉至极，灵力微动的刹那，瞬间敛尽煞气，化作残影遁入深巷，消失无踪。
+ 
+麢循着残余滔天怨念追踪而去，一路剥离市井烟火，抵达城市夹缝深处。
+ 
+一栋荒废多年的私立医院，死寂伫立。
+荒草漫阶、窗朽墙霉，整栋楼宇被浓稠黑雾封锁，死气沉郁，阴风刺骨。
+
+踏入废院的一刻，层层叠叠、积压百年的怨念轰然扑面。
+无数惨死、绝望、不甘的阴息交织成深海般的寒意。
+即便是见惯阴阳的麢，也微微蹙眉。
+ 
+迷雾太深，贸然探查只会打草惊蛇。
+麢转身折返，将调查重心落回知夏身上。
+ 
+暮色温柔，街灯缱绻。
+ 
+知夏身侧靠着男友沈叙。
+ 
+他身姿挺拔、眉眼温润、斯文体贴，一举一动皆是恰到好处的温柔宠溺，在外人眼中是无可挑剔的完美恋人，也是知夏深陷梦魇折磨时，唯一的安稳与寄托。
+ 
+唯有依偎在他身侧，心底的恐惧才能稍稍平息。
+ 
+暗处的麢冷眼旁观，无波无澜。
+ 
+骤然天色剧变。
+ 
+暖风转瞬成刺骨阴风，黄昏顷刻暗沉，煞气暴涨覆压天地。
+ 
+一道猩红残影撕裂空气，女鬼红衣翻飞、怨气炸裂，携着汹涌恨意直直扑向知夏，杀意凛冽，势如夺命。
+ 
+知夏瞬间僵滞，浑身冰凉，连日梦魇的恐惧席卷全身，让她动弹不得。
+ 
+生死刹那，冷白身影瞬闪而至。
+ 
+麢抬手结印，黑白灵力轰然铺开，结界瞬间锁死虚空，强势将红衣女鬼禁锢半空。
+阴风骤停，煞气尽散。
+ 
+被缚的女鬼缓缓仰头，凌乱发丝下，惨白面容扯出一抹凄烈癫狂的笑。
+血泪滚落，浸透猩红裙摆，破碎的笑意在暗沉街头回荡，悲凉又诡异。
+ 
+麢扣住她飘摇残破的魂体，转瞬退入无人窄巷，布下密闭结界，开启轮回之眼。
+ 
+淡金微光穿透虚妄，直探因果。
+ 
+“为何夜夜入梦缠她，耗她生机。”他声线清冷，是审判者的审讯。
+ 
+女鬼魂体颤抖，血泪不止，眼底盛满无尽苍凉：“你什么都不懂……”
+ 
+话音未落，异变陡生。
+ 
+巷外虚空突窜一道极阴毒黑煞，穿透结界缝隙，直指女鬼魂体，力道决绝——是要当场磨灭她的残魂，让她永世封口。
+ 
+女鬼魂体寸寸皲裂、濒临湮灭。
+ 
+麢瞬间洞悉猫腻，反手凝盾挡下绝杀。
+暗处之人一击落空，气息瞬间隐匿无踪。
+ 这一切都太过诡异
+
+麢不再保留，全力催动轮回之眼，撕裂层层岁月封印，重塑了女鬼记忆。
+ 
+女鬼名唤晚璃。
+她的记忆中竟出现了一张熟悉面孔——沈叙
+记忆中两人亲密无间
+就如现在的之夏和沈叙一般
+
+记忆层层重组
+直到出现下面一幕
+那夜大雨倾盆，因为好奇跟踪深夜出门的沈叙。晚璃撞破了一件事，也是这件事让她万劫不复，被拖入无尽深渊。
+
+原来她根本就不是什么恶煞，
+而且是沉冤三百年的受害者。
+ 
+而温润儒雅的沈叙，不是凡人不是良人，是隐匿于人间三百年的邪修。
+ 
+他专修禁术，不靠天地灵气，唯以活体炼魂、掠夺少女寿元维系长生。
+他极善攻心伪装，以温柔深情为面具，专挑孤身无依的少女下手，无人追查、无人求证，方便他岁岁猎杀、无声抹杀，堆砌自己的长生基业。
+ 
+晚璃是他无数受害者中，唯一拼死留存残魂、侥幸未灭的人。
+ 
+曾经的晚璃，亦如如今的知夏，沉溺在沈叙的温柔骗局里，满心信任、毫无防备。
+直到她撞破废院的血腥真相——这里从不是闹鬼凶地，是沈叙三百年不变的炼魂囚笼、活体刑场。
+ 
+她亲眼看见，斯文温柔的沈叙面无表情抽离前任少女的寿元，断送鲜活性命。
+ 
+沈叙被撞破罪孽后，褪去所有温情，只剩刺骨杀意：“既然你看见了，便不必再演了。”
+ 
+此后，晚璃被长期囚禁废院，日日承受抽魂炼寿的酷刑，皮肉魂魄日夜被摧残掠夺。
+她凭一口不甘执念拼死出逃，却在暴雨深夜的废院天台被沈叙堵截。
+ 
+为了不再沦为养料、留存一丝真相，一袭红裙的晚璃纵身坠楼。
+ 
+身死刹那，极致冤屈恨意凝成红衣煞体。
+ 
+可她即便化煞，依旧敌不过三百年邪修的沈叙。
+三百年来，所有窥探真相、试图逃离的受害者，尽数被他暗中抹杀、魂飞魄散。
+唯有晚璃，在阴阳夹缝中苟延残喘。
+ 
+直到她遇见和自己一样被沈叙盯上的知夏。
+ 
+看着干净单纯的知夏一步步沦陷信任、走向绝境，晚璃焦灼绝望。
+她魂体残破、无力对抗沈叙，更无人会信一只厉鬼的辩解。
+ 
+绝境之下，她只能以命设局。
+ 
+她夜夜入梦纠缠，用恐惧敲打沉溺骗局的知夏；她刻意当众展露杀意、主动扑杀，制造灵异事件
+ 
+她以自身入局、以命求救。
+ 
+她赌上残魂与轮回，引出能审判邪祟的麢，这是她唯一能救下知夏、揭穿罪孽的方式。
+ 
+世人所见的恶鬼行凶，是泣血救赎。
+世人所见的恶意纠缠，是绝境微光。
+ 
+真相铺开，结界内死寂寒凉。
+最凶的鬼，藏着最善的念。
+最温柔的人，藏着最毒的恶。
+ 
+麢窥见三百年累累罪证，百余条无辜亡魂，尽数葬送于沈叙的温柔屠猎。
+ 
+他护住怨气散尽、魂体通透的晚璃，转瞬返回街头。
+ 
+灯火依旧温柔，知夏仍依偎在沈叙身侧，眉眼安然，对一切罪孽一无所知。
+ 
+“三百年了，还没演够？”
+ 
+清冷声线破空，撕碎所有温情假象。
+ 
+沈叙瞬间僵滞，笑意凝固眼底，温润皮囊下戾气翻涌，罪孽彻底败露。他强作镇定，意图伪装抵赖。＂我不知道你是什么意思＂
+ 
+麢字字铿锵，步步逼近：“三百年活体炼寿，百余人冤魂枉死。”
+“沈叙，你的骗局该落幕了。”
+
+闻言沈叙阴冷狞笑出声：“既然被你看穿，今日便无人能活着离开此地”
+言语间滔天黑煞暴涨席卷天地，沈叙展露邪修真身，狞笑着催动三百年邪力绝杀袭来。阴毒术法汹涌噬命，与麢的黑白灵力轰然对撞，气浪翻涌震颤四方。
+ 
+沈叙纵横人间三百年，术法阴诡根基深厚，缠斗间步步强攻，却始终被麢稳稳压制。
+绝境之下他邪力暴走，欲同归于尽。
+ 
+麢眼眸轻阖，黑白双魂同临现世。
+ 
+渡灵与裁决之力交织迸发，黑发染雪，气场登临巅峰。一念裁决，万邪寂灭。
+ 
+纯净磅礴的灵力凝成破空光束，贯穿漫天黑雾，瞬间碾碎沈叙所有邪力根基、护体煞气。
+ 
+巨响震彻四野，沈叙重伤坠地，魂体残破、修为尽废，满眼惊骇绝望。
+ 
+“滔天罪行，无可饶恕，罚你入无间地狱，历三百年轮回酷刑，亲偿百余人魂痛。刑满，魂飞魄散，永世无生。”
+ 
+天道枷锁锁死残魂，拖拽坠入地狱，三百年血债终得清偿。
+ 
+阴云散尽，天地清明。
+ 
+晚璃红裙褪尽血色，戾气全无，遥遥望向知夏，浅浅一拜，化作柔光静待引渡。废院沉雾消散，无数沉寂百年的亡魂虚影缓缓现世。
+ 
+麢抬手开启轮回正道，三日三夜不息，孤身引渡所有冤魂，送她们脱离怨地、重入新生。
+ 
+百年冤案，彻底尘埃落定。
+ 
+全程见证所有真相的知夏，僵立风中，浑身彻骨冰凉。
+ 
+她终于知晓，夜夜萦绕的梦魇从不是恶鬼加害，是晚璃赌上一切的唤醒与救赎。
+人人唾弃的厉鬼，是救她性命的恩人；
+她全心依赖的恋人，是屠戮百年的恶魔。
+ 
+所有温柔宠溺，是精心算计的捕猎陷阱。
+所有甜蜜陪伴，是白骨铺垫的邪恶长生。
+ 
+后怕、愧疚、心酸、庆幸交织心底，热泪无声坠落。
+她险些葬身温柔地狱，沦为无名亡魂，是晚璃从深渊口硬生生拽回了她。
+ 
+风过人间，天光澄澈。
+ 
+知夏望着朗朗夜空，心底归于沉静释然。
+ 
+善恶终有报，天道终分明。
+她侥幸得存的余生，是无数亡魂未能看见的天光。
+ 
+往后岁月，她将带着这份沉重的恩情与救赎，好好活下去，替所有长眠黑暗的人，好好看遍人间山河万里。`, authorNote: ["沈叙三百年，吸食寿命，温柔圈套让遇见的女生依赖他，享受这种感觉，玩够了就把这些女生全部吸食掉",
+"这个沈叙是大变态，自己把那些女孩救赎，然后又给折磨致死",
+"凡人就是求长生，从古至今"] },
+{ title: "欲望", images: ["https://imgbed.heliar.top/i/itYqrg7BkPlpJ7Av_%E6%88%AA%E5%B1%8F%202026-11-19%2012.42.19.png",
+"https://imgbed.heliar.top/i/xKrT-32PTvcijzlZ_%E6%88%AA%E5%B1%8F%202026-11-19%2012.42.44.png",
+"https://imgbed.heliar.top/i/2qg9wdMkzC1bQ0Ok_%E6%88%AA%E5%B1%8F%202026-11-19%2012.43.08.png",
+"https://imgbed.heliar.top/i/xmxNIWoWhODt8HOl_%E6%88%AA%E5%B1%8F%202026-11-19%2012.43.25.png",
+"https://imgbed.heliar.top/i/GDClll6dAfk5o4I4_%E6%88%AA%E5%B1%8F%202026-11-19%2012.43.52.png",
+"https://imgbed.heliar.top/i/Jfqq-uq9mR_X_d6t_%E6%88%AA%E5%B1%8F%202026-11-19%2015.55.18.png"], content: `夜雨漫过城市的檐角，把灯火泡成一片朦胧的晕。凌晨两点，陆冷家的门被撞开。
+ 
+云熙站在门槛上，浑身浸透，水珠顺着发梢不停往下淌。她脸色白得像一张浸过水的纸，肩膀不受控制地发抖，声音碎在雨声里。
+ 
+“陆冷，我看见鬼了。”
+ 
+陆冷抬眼，心里一沉。
+ 
+他做灵异博主许久，看多了编造出来的惊悚故事，本不容易被吓到。可上一桩怪事之后，他已经清楚，这个世界确实有阴阳边界之外的东西。他放下手里正在剪辑的素材，快步扶她进来，递过一条干毯子。
+ 
+“慢慢说，别急。”
+ 
+云熙死死攥着他的手臂，指尖冰凉僵硬，力道大得几乎要嵌进皮肉里，眼眶通红，泪水混着雨水不断滚落：“我不敢回家，我真的不敢回去……那个东西，它一直跟着我，它想杀了我！”
+ 
+极致的恐惧裹挟着她，让她语无伦次，浑身止不住地发抖。
+ 
+陆冷见她情绪彻底失控，知道普通的安慰毫无用处。他沉吟片刻，心底浮现出那个唯一能化解阴邪诡事的人。
+ 
+“你别怕，我带你去找一个人。”
+ 
+ 
+于是深夜，两个人穿过寂静长街，走到那座藏在老街深处的小院。
+ 
+麢立在廊下，眉眼淡漠，周身萦绕着生人勿近的疏离感，自带看透阴阳生死的凛冽气场。
+ 
+“拜托你帮帮她，”陆冷语气急切，“你说是灵魂孟婆，阴阳之间的事，只有你能摆平。”
+ 
+麢轻轻抬眼，淡淡扫了他一眼。
+ 
+“是灵魂摆渡人。孟婆熬汤渡亡魂，我不熬汤，只裁执念，收恶鬼。”
+ 
+他的视线落在惊魂未定的云熙身上。
+ 
+“讲。”
+ 
+故事从图书馆那个午后开始。
+ 
+云熙遇见江屿。阳光落在书架之间，男生温和干净，说话时语调轻柔。
+一来二去，两人慢慢熟悉，暧昧一点点涨起来，直到江屿认真告白。
+云熙本来就动心，笑着应下，以为自己接住了一段安稳温柔的缘分。
+ 
+变故，是从她答应和他在一起之后才开始的。
+ 
+夜里，房间里总是多出来一道气息。
+明明门窗锁得严实，屋子里只有她一个人，她却总觉得暗处有人静静看着。
+江屿不在的时候，床下便会响起细碎的声响……
+像是布料摩擦木板……
+或是指甲轻轻刮着床板……
+一声一声钻入耳膜……
+ 
+她好几次壮着胆子俯身去看，阴影里浮起一张惨白的脸，长发垂落，空洞的眼睛死死盯着她。
+每一次，都把她惊得晕厥在床边。
+ 
+她把这些事讲给江屿听。
+江屿只是抱着她，轻声劝她不要多想，说是工作太累，压力太重，生出了幻觉。
+没过多久，江屿告诉她，要出一趟远门，让她乖乖待在家里，等他回来。
+ 
+就是他离开之后，事情变得愈发凶险。
+ 
+那天傍晚，大雨倾盆。
+云熙出门买东西，回来困在路边，等不到车，手机信号凭空消失。
+天地之间只剩下哗哗雨声，四下空无一人。
+ 
+就在这时，那个女鬼从突然雨幕里走出来。
+冰冷的手直接扣住她的脖颈，窒息感瞬间裹住她。
+云熙拼命挣扎，却挣不开那股阴冷的力量。就在意识快要沉下去的时候，远处一辆车的车灯划破雨雾，强光撞在女鬼身上，那道影子猛地松开手，向后退去。
+ 
+她抓住机会，不顾一切地跑，一路奔到陆冷家门口。
+ 
+听完她的叙述，陆冷久久没有说话。麢沉默片刻，只吐出一句。
+ 
+“去你住处。源头在那里。”
+ 
+三人立即动身，去往云熙的公寓。
+ 
+推开门的一瞬，沉闷压抑的气压扑面而来。房间看着整洁，可空气里沉甸甸的，像有什么东西蛰伏在每一处阴影里。
+普通人只会觉得阴冷，麢却一眼看见盘绕在这间屋子里不散的阴气，所有煞气，都向卧室的床底汇聚。
+ 
+他走到床边，弯腰，伸手探进黑暗。
+再抬起身时，手里捏着一个粗布缝制的巫蛊娃娃，发黑的红线一圈圈缠紧，娃娃心口，用朱砂写着云熙完整的生辰八字。
+ 
+陆冷倒抽一口冷气，云熙脚下一晃，几乎站不稳。
+ 
+“有人刻意布下术法，引阴灵缠你。”
+麢指尖拂过那行字，声音没有起伏，“以八字为引，日夜消磨，直到夺生。”
+
+ 真相浮出水面，云熙浑身冰凉，难以置信地喃喃自语：“是谁……是谁要这么害我？我从来没有得罪过任何人……”
+ 
+她性格温和，待人友善，从未与人结怨，根本想不通，究竟是谁对自己怀有如此深重的恶意。
+ 
+三人立刻顺着线索层层排查。
+ 
+细细梳理下来，唯一的疑点，落在了江屿的继妹，苏念身上。
+ 
+江屿父母重组家庭，他有一个小几岁的继妹苏念。
+苏念外表温柔乖巧，性格安静内敛，平日里待人谦和，看着老实无害。
+ 
+云熙和苏念相处一直十分和睦，她真心把对方当成妹妹对待，时常分享好物、贴心关照。
+而江屿更是极其疼爱这个无依无靠的继妹，事事包容照料，旁人看在眼里，都觉得兄妹二人感情和睦。
+ 
+所有人都以为，这是一段温馨纯粹的亲情与友情，无人会将温柔乖巧的苏念，与阴毒的巫蛊之术联系在一起。
+
+可真相的裂隙，往往藏在不为人知的暗处。
+ 
+陆冷独自去江屿家探查的那天，在院子深处撞见了另一幅景象。
+ 
+白日里温顺的少女，独自站在树荫下，眼底翻涌着戾气，对着一只流浪猫发泄心中的怨毒。他躲在暗处，清清楚楚听见她低声的呢喃，每一句都裹着浓烈的嫉妒。
+ 
+是云熙抢走了哥哥。
+ 
+凭什么云熙可以拥有江屿所有的温柔。
+ 
+她恨云熙，盼着她消失。
+ 
+陆冷把所见所闻带回，云熙如遭重击。
+她没有办法相信，自己一直善待的小姑娘，心里藏着这样深的恨意。
+震惊过后，她还是去找苏念，当面质问巫蛊娃娃和缠人的女鬼。
+ 
+苏念瞬间红了眼眶，眼泪说来就来，一口咬定自己什么都不知道，委屈得仿佛被无端构陷。
+争执之间，房门响动，江屿提前回来了。
+ 
+他第一时间挡在苏念身前。
+苏念垂着头，声音哽咽，说大概是自己惹人厌烦，不如离开，不再打扰他们。
+几句话，就把自己放在受害者的位置。
+ 
+“到底怎么回事？”江屿看向云熙。
+ 
+就在这时，陆冷站出来，把后院所见、所听见的话，一字不差说出。
+ 
+苏念脸上的血色瞬间褪干净。
+江屿难以置信地看向她，追问是不是真的。
+
+ 一句质问，彻底压垮了苏念最后的伪装。
+ 
+长久的隐忍、偏执的爱意、积压的嫉妒，在这一刻彻底爆发。
+ 
+柔弱乖巧的面具轰然碎裂，她猛地抬头，脸上的泪水戛然而止，转而扬起一抹癫狂又凄厉的笑，笑声尖锐刺耳，透着病态的偏执。
+ 
+“是！是我做的又怎么样！”
+“我就是喜欢我哥！我就是讨厌云熙！我就是恨她！”
+“凭什么她可以光明正大站在他身边，拥有他所有的温柔和偏爱？”
+“那个巫蛊娃娃是我放的，阴灵是我用通灵术招来的！”
+“我就是要折磨她，我就是要她消失！”
+“只要她不在了，哥哥就只会看着我，只会对我一个人好，永远陪着我！”
+ 
+歇斯底里的呐喊，泄尽了她长久以来扭曲的执念与爱意。
+ 
+屋内一片死寂。
+ 
+江屿看着眼前陌生又偏执的妹妹，满心失望与愤怒，胸口剧烈起伏，语气冰冷至极：“苏念，你太让我失望了。从今往后，你若再敢伤害云熙分毫，休怪我不顾兄妹情分。”
+ 
+狠话落下，苏念笑容破碎，泪水汹涌而出，带着无尽的不甘与绝望，转身疯一般哭着跑了出去。
+ 
+事情到这里，所有人都以为结束了。
+ 
+风波平息，公寓不再有异响，阴气一点点淡下去。
+三天，日子过得安稳，仿佛那场缠绕云熙许久的噩梦，就此翻篇。
+ 
+直到第三个深夜。
+ 
+睡梦中的云熙猛地挣扎起来。
+她弓起身子，双手死死掐在自己颈间，脸色迅速泛青，呼吸艰难，像是有一只看不见的手，扼住她的咽喉。江屿吓得拼命去掰她的手，可那股力量不属于人间，怎么都拉不开。
+ 
+就在她气息快要断绝的瞬间，一道身影凭空落在卧室中央。
+ 
+麢抬眼，望向楼道深处浓稠的黑暗。
+ 
+“蛰伏多日，你终于肯现身了。”
+ 
+白光自他指尖迸发，那股扼住云熙的力量骤然消散。
+云熙大口大口地喘息，咳得浑身发抖。所有人的目光，都钉在拐角那片阴影上。
+ 
+一个清瘦少年，慢慢走出来。
+ 
+江屿看清那张脸，浑身一震，声音都发颤。
+ 
+“苏辰。”
+ 
+苏念的双胞胎弟弟。
+ 
+他沉默寡言，常年躲在暗处，很少露面，几乎所有人都快要忘记，还有这样一个人存在。
+ 
+“苏念心里的嫉妒是真的，”麢缓缓开口，把藏在底下的另一层真相揭开，“但她不懂巫蛊，没有能力布下这个局。那天她承认所有罪责，只是一时被情绪冲昏头，索性揽下一切。”
+ 
+真正在床底埋下巫蛊娃娃、招来女鬼、一次次想要索走云熙性命的，是苏辰。
+ 所有人彻底骇然，浑身冰凉。
+ 
+真相层层剥开，扭曲的执念令人不寒而栗。
+ 
+苏辰自幼孤僻敏感，常年依附江屿生活，早已对温柔待他、唯一给过他温暖的江屿，滋生出了极致又扭曲的占有欲。
+ 
+这份执念隐秘又疯狂，深埋心底，无人知晓。
+ 
+他无法忍受江屿的温柔与偏爱分给任何人，无法看着江屿满心满眼都是云熙，无法接受自己唯一的光，被旁人占据。
+ 
+偶然之间，他习得阴毒巫蛊之术，知晓以生人八字养蛊招阴，可日夜折磨、直至灭杀宿主。
+ 
+于是，这个常年沉默的少年，在无人看见的暗处，布下了整场恶局。
+ 
+他偷偷制作写有云熙八字的巫蛊娃娃，藏于床底，引阴灵缠身，日夜制造诡异异象，步步施压，一次次催生杀机，想要彻底除掉云熙。
+ 
+他藏在苏念的身后，看着姐姐被误会、被指责、背负所有骂名，始终冷眼旁观，隐匿身形，独享着即将“得偿所愿”的扭曲快感。
+ 
+之前所有的诡异、索命、阴邪侵扰，三日来看似平静下的暗流涌动，今夜骤然爆发的杀局，尽数出自他手。
+ 
+听完所有真相，江屿浑身冰冷，彻底呆滞。
+ 
+谁也想不到，最无害、最沉默、最不起眼的人，才是最恶毒、最偏执、最狠戾的始作俑者。
+ 
+暗处的苏辰彻底不再伪装，常年压抑的扭曲执念与阴暗心性尽数爆发，眼底漆黑一片，戾气滔天。
+
+
+他死死盯着床上的云熙，又偏执狂热地看向江屿，声音沙哑低沉，带着病态的疯狂：“她不该存在……只要她死了，哥哥就永远只属于我一个人了。”
+
+执念入魔，恶念生根，彻底黑化。
+
+浓烈的阴煞之气从他周身疯狂翻涌，带着必杀的恶意直冲云熙而去，想要完成最后的绝杀。
+
+麢眸色骤冷，周身灵力骤然暴涨。
+
+"蓄意养蛊，招阴杀生，执念化魔，屡起杀心，罪无可赦。”
+
+他从不姑息黑化恶鬼，亦不纵容执迷造恶之人。
+
+话音落，身后光影流转，冰冷肃穆的轮回枪破空浮现，银白枪身裹挟着渡阴灭恶的凛冽力量，带着裁决阴阳的威压。
+
+一道白光破空而出，精准一击。
+
+没有丝毫悬念。
+
+彻底黑化、满身恶孽的苏辰，瞬间被灵力贯穿躯体。
+
+他眼中的疯狂与执念瞬间溃散，周身浓重的阴邪房气层层消散，单薄的身形在白光中缓缓变得透明，最终彻底碎裂，消散于天地之间，半点不留痕迹。
+
+作恶者，终被裁决。
+
+一切尘埃落定。
+
+之后的日子，云熙和江屿都学会珍惜这份失而复得的安稳，好好守着彼此。
+陆冷继续更新他的账号，记录那些游走在虚实边界的故事，继续去遇见普通人看不见的诡谲。
+
+老街小院，夜风掠过树梢。麢独自立在月下，望向远处万家灯火。
+
+人间许许多多祸事，源头从来不是鬼魅，而是人心。
+
+爱而不得的占有，不甘落空的嫉妒，藏在安静皮囊之下永不停止的渴求。
+
+这便是欲望。
+
+它无声滋生，慢慢扎根，最后引着人，一步步踏入魔道。
+
+彩蛋
+
+麢独坐在木桌前，安静吃着热腾腾的包子。他一身黑衣气质疏离清冷，与喧闹市井格格不入。
+ 
+一道轻快的身影忽然在他对面径直坐下。
+ 
+少女眉眼明媚，笑容鲜活，目光直直落在麢脸上，眼底带着直白的惊艳，语气俏皮又灵动：“帅哥，你长得也太好看了！长这么帅，要不要买一份意外保险？”
+ 
+麢垂着眼，不为所动，漠然无言，没有丝毫回应。
+ 
+少女不死心，微微前倾身子，软磨硬泡，带着几分狡黠：“来一份嘛，就当图个安稳，很划算的。”
+ 
+沉寂几秒，麢才缓缓抬眼，漆黑瞳眸清冷无波，神色淡漠至极，字字冰凉：“你找错人了。”
+ 
+“我不会死。”
+ 
+话音落定，他的视线骤然收拢，精准落在少女的双眼深处，眸光微沉：
+ 
+“你的这双眼睛，比你的保险有趣多了。”
+ 
+少女脸上明媚的笑意瞬间一滞
+ 
+新的谜局，悄然开启。`, authorNote: ["男主继妹嫉妒，但是没那么坏，真去害人，是双胞胎弟弟利用了继妹",
+"小娅肯定知道的，自己的眼睛能看到别的东西"] },
+{ title: "番外·双生骨", images: ["https://imgbed.heliar.top/i/vPVoyazSbSgH3cb2_%E6%88%AA%E5%B1%8F%202026-11-19%2020.02.01.png",
+"https://imgbed.heliar.top/i/HRI7nyqsvu8MLynE_%E6%88%AA%E5%B1%8F%202026-11-19%2020.05.08.png",
+"https://imgbed.heliar.top/i/dxTj1ORBbBsbApEM_%E6%88%AA%E5%B1%8F%202026-11-19%2020.05.32.png",
+"https://imgbed.heliar.top/i/J9i5gsdQD8UNh_MQ_%E6%88%AA%E5%B1%8F%202026-11-19%2020.06.01.png",
+"https://imgbed.heliar.top/i/ihwpEiAtwwlsECL2_IMG_2974.jpg"], content: `夜色沉沉，阴风啃噬着整座老城。
+ 
+十日之间，城中四名声名狼藉的纨绔子弟接连暴毙。
+ 
+死状一模一样。
+ 
+面色青白如霜，双目空洞涣散，浑身阳气被抽得干干净净，像是被极致深重的怨魂活活缠杀。
+ 
+无刀伤，无药毒。
+ 
+是鬼杀。
+ 
+阴阳摆渡人麢踏碎深夜浓雾而来。
+ 
+黑衣肃冷，眉眼覆着万年不化的寒霜，他执掌阴阳审判，见惯世间冤苦，却在踏入废楼的一瞬，指尖微不可察一沉。
+ 
+破败危楼中央，立着一道单薄的白衣女鬼。
+ 
+长发散乱垂腰，衣摆沾着经年洗不去的暗色血痕。
+ 
+她静静悬在阴风里，周身翻涌的怨气几乎凝成实质，压得整栋楼簌簌落灰。
+ 
+麢抬眸，声线冷而克制：
+“阴魂逾越，私杀阳人，收手。”
+ 
+女鬼缓缓抬头。
+ 
+一张极干净、极温婉的脸，本该是人间绝色，此刻却爬满泪痕血丝。
+ 
+她眼眶赤红，声音哑得像是被砂纸磨过，带着濒临破碎的颤：
+“他们不该活。”
+ 
+“阳间律法有人裁决，轮不到你以怨造杀业。”麢目光落进她飘摇残缺的魂体，“你有冤，可诉。”
+ 
+这句话，像是撬开了她死死封藏数年的崩溃。
+ 
+女鬼垂下手，指尖剧烈发抖，血泪顺着下颌不断滚落，砸在虚无的风里。
+ 
+“三年前。雨夜。在这里。”
+ 
+她字字哽咽，每一个字都带着刺骨的疼。
+ 
+“江屹说心悦我，我拒绝了他。”
+ 
+“他恼羞成怒，带了三个人。骗我进来，辱我，打我……最后活活弄死了我。”
+ 
+她说得断断续续，魂魄剧烈动荡，怨气冲天而起。
+ 
+“我死得好疼……我不甘心。”
+ 
+可怜纯情少女，被偏执纨绔江屹因爱生恨，求而不得，纠集同伴施暴虐杀。
+ 
+冤魂不散，归来索命，惨烈又可怜。
+ 
+麢眸底掠过一丝极淡的恻然。
+ 
+“我可替你重翻旧案，昭雪冤屈。”
+ 
+女鬼却轻轻笑了。
+ 
+笑得极轻，极悲凉，带着一种彻底烂透的绝望。
+ 
+“昭雪？”
+ 
+“我的青春，我的清白，我喜欢的人……全都烂在这场雨里了。”
+ 
+“昭雪有什么用。”
+ 
+她不肯停手。
+ 
+接下来三天，剩下三名纨绔接连在癫狂惊惧中暴毙。
+
+时光倒卷，雨夜重来。
+ 
+昏黑废楼，雨线疯狂砸落。
+ 
+十八岁的许知夏，穿着洁白的裙子，眼底藏着少女羞怯的欢喜，一步步小心翼翼走进废楼。
+ 
+她是来赴心上人约的。
+ 
+满心雀跃，满怀期待。
+ 
+下一秒，四个醉酒癫狂的男人冲了进来。
+ 
+惊吓、拉扯、哭喊、求饶。
+ 
+少女的清白、尊严、性命，在雨夜泥泞里被狠狠碾碎。
+ 
+挣扎到脱力，痛到极致，最后一口气彻底断绝。
+ 
+画面惨烈，句句印证女鬼所言非虚。
+ 
+看到这里，依旧无人怀疑。
+ 
+直到麢的视线，穿透雨幕，落在废楼最阴暗的角落。
+ 
+那里，站着一个人。
+ 
+一个和死去的许知夏，长得一模一样的少女。
+ 
+她静静立在阴影里。
+ 
+不远，不近。
+ 
+全程冷眼旁观。
+ 
+看着亲妹妹被欺辱、被折磨、被活活打死。
+ 
+眼底没有慌张，没有恐惧，没有半分不忍。
+ 
+只有一片冰冷、扭曲、隐忍多年的嫉妒。
+ 
+麢眸光骤然冰封，沉声问身侧女鬼：
+“暗处之人，是谁？”
+ 
+许知夏魂体猛地一颤，像是被人狠狠撕开伤疤，她失声痛哭，终于吐出那个藏了三年、不敢触碰的名字：
+ 
+“……我双生姐姐，许知瑶。”
+ 
+第一层震动人心的隐情揭开：
+ 
+她不是无人相救。
+ 
+她惨死的全过程，亲姐尽收眼底，冷眼旁观，见死不救。
+ 
+世人皆以为，这已是全部真相。
+ 
+可麢知道，不对。
+ 
+若只是旁观，怨不会深至此地。
+ 
+他继续往前回溯——赴约之前。
+ 
+惊天骗局，层层炸裂，彻底颠覆所有过往认知。
+ 
+两姐妹容貌无二，心性天差地别。
+ 
+妹妹许知夏，温柔单纯，干净赤诚。
+姐姐许知瑶，外表温婉，内里狭隘阴鸷。
+ 
+两人年少一同遇见温润少年陆景淮。
+ 
+双双心动。
+ 
+可陆景淮自始至终，眼里、心里，只有干净纯粹的许知夏。
+ 
+他会温柔唤她夏夏，会给她带糖，会护着她的小性子，眼底的温柔偏爱，从来只属于妹妹一人。
+ 
+一模一样的脸。
+ 
+永远，妹妹是被选择的那一个。
+ 
+姐姐是被忽视的影子。
+ 
+数年岁月，嫉妒在心底生根、腐烂、长成剧毒。
+ 
+许知瑶不甘至极。
+ 
+凭什么？
+ 
+凭什么同一张皮囊，她只能做替身，只能活在阴影里？
+ 
+于是她开始伪装。
+ 
+日复一日模仿许知夏的语气、神态、小动作、喜好。
+ 
+借着双生无差的容貌，长期顶替许知夏，与陆景淮私下相处、约会、相伴朝夕。
+ 
+陆景淮毫无察觉。
+ 
+他沉溺在温柔缱绻里，以为自己日夜相伴、深情以待的，是他心心念念的小姑娘许知夏。
+ 
+他所有的温柔、情话、偏爱，整整一年，尽数给了假扮妹妹的姐姐。
+ 
+偷来的爱情短暂虚妄，填不满她疯长的贪念。
+ 
+只要许知夏活着一天，她这个假货，就永远见不得光。
+ 
+永远随时会被拆穿，永远成不了正主。
+ 
+所以——
+ 
+她要许知夏死。
+ 
+死得干干净净，死得无人怀疑。
+ 
+她布下了一场完美杀局。
+ 
+那日午后，她温柔拉着懵懂无知的妹妹，笑意纯良：
+“夏夏，陆景淮今晚约你在废楼见面，他准备跟你告白，你快去吧。”
+ 
+许知夏脸红心跳，满心欢喜，毫无防备，信了亲姐姐的谎言。
+ 
+转头，许知瑶转身找到一直疯狂爱慕自己、对自己言听计从的江屹。
+ 
+她垂着眼，故作羞涩柔弱，字字诱导：
+“我妹妹心悦你许久，脸皮薄不敢说，今晚独自在废楼等你，你去陪陪她吧。”
+ 
+江屹本就痴迷许知瑶，闻言欣喜若狂，当真以为是美人托付，立刻带着三个狐朋狗友奔赴废楼。
+ 
+所有局，都是她设的。
+ 
+所有刀，都是她递的。
+ 
+江屹从来不是因爱许知夏不得而作恶。
+ 
+他从头到尾，都是被许知瑶利用的一把刀。
+ 
+四个纨绔可恨、该死。
+ 
+但他们，只是台前杀人的棋子。
+ 
+真正的恶鬼，自始至终，是她的亲姐。
+ 
+而最刺骨、最疯魔、最让人浑身发冷的终极反转，藏在命案结束的那一刻。
+ 
+雨夜废楼，许知夏血流殆尽，含恨而绝。
+ 
+尸骨未寒，冤魂未散。
+ 
+外面满城风雨，无人知晓这里的惨案。
+ 
+许知瑶从阴影里走出。
+ 
+她淡定擦掉袖角沾染的零星雨渍，换掉身上衣裳。
+ 
+穿上了许知夏最喜欢的白裙，梳上了许知夏常梳的发式。
+ 
+顶着妹妹那张干净温柔的脸。
+ 
+代替刚刚惨死的许知夏。
+ 
+风光出嫁。
+ 
+红烛高照，喜乐声声。
+ 
+当晚的婚典盛大圆满。
+ 
+陆景淮执起她的手，眼底是数不尽的温柔与珍视。
+ 
+他以为，自己娶到了心心念念、钟爱多年的小姑娘许知夏。
+ 
+他温柔呵护、岁岁相守、深情宠溺的数年枕边人——
+ 
+从来不是许知夏。
+ 
+是亲手策划杀局、冷眼看妹惨死、偷妹人生、盗妹情爱的恶毒姐姐，许知瑶。
+ 
+三年。
+ 
+整整三年。
+ 
+凶手披着受害者的皮囊，享受着本该属于死者的爱情、温柔、锦绣人生。
+ 
+活在阳光之下，被人万般宠爱，岁月安稳，岁岁无忧。
+ 
+而真正的许知夏，困在阴冷废楼，沉冤地狱，日日受噬魂之痛。
+ 
+真相彻底大白的一瞬。
+ 
+阴风呼啸，鬼哭震天。
+ 
+许知夏的魂魄剧烈翻腾，积压三年的委屈、痛苦、背叛、绝望，彻底崩溃。
+ 
+她杀尽四名纨绔。
+ 
+了结了台前所有刽子手的性命。
+ 
+最后，只剩那个藏在温柔皮囊下，最恶毒、最该下地狱的始作俑者。
+ 
+麢破开阴阳屏障，落至人间富贵宅院中。
+ 
+厅堂温暖，灯火柔和。
+ 
+许知瑶依偎在陆景淮身侧，眉眼温婉，笑意浅浅，是世人眼中无可挑剔的贤妻。
+ 
+岁月静好，温情脉脉。
+ 
+麢居高临下，眸底是碾碎一切虚妄的冰冷审判。
+ 
+字字诛心，当众撕开她三年伪装的人皮：
+“三年前雨夜废楼。”
+ 
+“你骗妹赴死，借刀杀人，冷眼观她惨死。”
+ 
+“你窃她容貌，盗她情爱，替她婚嫁，占她余生。”
+ 
+“许知瑶，整场血案，你才是唯一的元凶。”
+ 
+一句话，掀翻所有安稳。
+ 
+满堂死寂。
+ 
+陆景淮浑身僵住，血液瞬间冻僵四肢百骸。
+
+他猛地看向身侧温柔相伴三年的妻子，眼底的深情寸寸碎裂，转为极致的陌生、恐惧、冰凉。
+
+三年朝夕。
+
+三年温柔。
+
+三年情深。
+
+原来自己日夜疼宠的人，是害死自己心上人的真凶。
+
+原来自己的每一次温柔，都落在沾满鲜血的骗局之上。
+
+许知瑶的所有伪装，彻底崩裂。
+
+她猛地抬头，眼底温婉尽数褪去，只剩下扭曲、疯狂、不甘的血泪嫉妒。
+
+她嘶吼出声，字字癫狂：
+“凭什么！！”
+“凭什么她生来干净纯粹，人人偏爱！”
+“凭什么我和她一模一样，我就只能是影子！”
+“我只是想要本该属于我的一切！我有错吗！”
+
+麢眼神无半分波澜。
+
+错不至死？
+
+借刀屠亲，窃命偷生，瞒天过海三年安稳。
+
+此罪，永世难赎。
+
+他抬手，阴阳灵力一瞬锁死她魂魄。
+
+白光凛冽而过。
+
+许知瑶一声凄厉惨叫，魂魄寸寸溃散
+
+魂飞魄散，永世不得轮回。
+
+人间罪孽，尽数清算。
+
+豪宅空空，红烛犹暖。
+
+一具享尽宠爱、锦绣圆满、毫无伤痕的躯体，骤然成了空壳。
+
+阴风缓缓穿堂而入。
+
+白衣女鬼许知夏，静静立在灯火暗处。
+
+大仇得报。
+
+仇人尽灭。
+
+可她没有半分解脱。
+
+只剩无边无尽的空洞与悲凉。
+
+她看着那具顶替自己三年、偷走自己全部人生的躯壳。
+
+那里有她本该拥有的岁岁平安，有她本该拥有的爱人温柔，有她被生生碾碎的十八岁。
+
+她慢慢抬步。
+
+一步步，走向那具温热完好的肉身。
+
+亡魂入躯，恶鬼为人。
+
+从此--
+
+世间再无枉死女鬼许知夏。
+再无恶毒姐姐许知瑶。
+
+只剩她。
+
+披着仇人的皮囊，住着偷来的家，守着一场沾满自己鲜血的爱恋。
+
+日日对着深爱自己、却认错人的少年。
+
+岁岁活在谎言里，年年困在血海债里。
+
+爱错位，恨无解，人鬼颠倒，余生永囚。
+
+这是她最后的复仇。
+
+也是她，永世不得解脱的沉沦。
+
+第二种结局
+
+周遭喧嚣尽数褪去，满堂人皆失神恍惚，陆景淮僵立原地，痛得发不出半点声响。
+麢立于厅堂一隅，并未即刻离去。
+ 
+方才被灵力打散的魂魄并未全然消弭，一缕极淡近乎透明的残魂，自那空壳躯体之中悠悠浮起。
+那是许知瑶仅剩的一点灵息，薄得仿佛一阵风便能吹得荡然无存，旁人看不见，唯有执掌阴阳的麢可以窥见。
+ 
+残魂半浮在幽暗的阴影里，没有方才歇斯底里的疯狂，只剩一片安静的疲惫。
+ 
+麢垂眸望着这一缕摇摇欲坠的残魂，声音压得很低，不叫旁人听见：“处心积虑，布下滔天骗局，背负满身恶名，亲口揽下残害亲妹的罪名，叫妹妹恨你入骨，落得魂飞魄散的下场。值得吗。”
+ 
+许知瑶的残魂轻轻晃了晃，虚影之上，再无半分嫉妒怨毒，只剩浅浅的释然，声音轻得如同叹息：“值得。只要妹妹好好活着，便全部值得。”
+ 
+过往被刻意掩埋的真相，顺着麢的阴阳回溯之力，缓缓铺展在他眼前。
+ 
+那日，并不是许知瑶设局诱骗江屹前去废楼。
+真正的经过，是江屹自作算计，以陆景淮的名义诓骗许知夏赴约。
+许知瑶很晚才发觉妹妹不在家中，心头不安，疯了一样满城寻找，待她冒雨冲进废楼之时，惨剧早已落幕。
+整栋危楼之内，暴雨滂沱，狼藉满地，只剩下妹妹早已残破冰冷的身体，再晚一步，她连最后一面都没能见到。
+ 
+许知夏惨死在此地，怨气被囚，成了这座废楼的地缚灵。
+若是不能亲手了结那四个施暴之人，她的魂魄便会永远禁锢于此，困在这片痛苦之地，永世不得离开，更谈不上轮回复生。
+ 
+许知瑶痛到几近疯魔，踏遍荒山野岭寻到隐世异人，甘愿耗损自身大半魂元，求隐士出手，放大妹妹身死之后滋生的怨怼，助许知夏化为厉鬼。
+ 
+可厉鬼心中若是尚存半分温情，便下不去杀手。
+ 
+于是她编织出那套“嫉妒妹妹、贪恋情爱、主动唆使恶徒行凶”的谎言。
+方才在众人面前那番歇斯底里的认罪，也是她刻意演出来的。
+她要让许知夏彻彻底底恨上自己，恨到骨髓，恨到心底只剩复仇的执念，才能驱使厉鬼之手，亲手诛杀仇人，解开地缚灵的枷锁。
+ 
+从前她模仿许知夏，前去与陆景淮相见，哪里是什么贪恋属于妹妹的情缘。
+不过是想替妹妹试探，看一看这个少年，究竟值不值得许知夏交付一腔真心。
+可谁也料不到江屹的痴念，料不到那场雨夜突如其来的浩劫。
+变故陡生，妹妹殒命，一切全部失控。
+ 
+绝望之下，她才定下这盘赌上自己魂灵的棋局。
+ 
+她顶替妹妹出嫁，占下这副鲜活完好的肉身。
+这具同源的躯体，唯有她的魂灵先占据三年，滋养肉身生机，待她被阴阳之力打散魂体之后，躯壳才能够安稳接纳许知夏的亡魂，供妹妹借体重生。
+ 
+十二岁那年的记忆也随之浮现。
+少年时河畔失足落水，该溺死在滚滚河水之中的人本是许知瑶。
+是年幼的许知夏不顾一切跃下水救回了她，自己却呛水伤了肺腑，落下经年难愈的咳疾，身子常年孱弱。
+ 
+自那一日起，许知瑶心底便压着一份沉甸甸的亏欠。
+妹妹替她捡回一条性命，她便打定主意，总有一日，要把这条命，还给许知夏。
+ 
+“十二岁河里，本该死的是我。”残魂虚影微微颤抖，温柔又悲凉。“夏夏替我捡回性命，受了数年病痛折磨。我欠她的，今日，终于还清。”
+ 
+她抬眼望向已经入躯，尚还沉浸在悲恨之中的许知夏，隔着一层朦胧光影，目光满是眷恋。
+ 
+又转头看向麢，残魂微微屈膝，像是低声恳求：“摆渡人，求你。千万不要将真相告知夏夏。”
+ 
+“就让她继续恨我就好。不要打碎她心中的仇与恨。只要她能好好活在阳光底下，拥有本该属于她的人生，知晓全部真相于她而言，只会是无尽煎熬。我如何结局，都无所谓。”
+ 
+话音落下，那一缕薄薄残魂再撑不住。
+ 
+微光点点，四散飘逝。
+ 
+彻彻底底，消散于天地之间，不留一丝痕迹。
+ 
+厅堂之内，红烛摇曳。
+ 
+许知夏缓缓睁开双眼，这是属于人间的温热视线。她尚且不知道，那蚀骨彻心的恨意之下，埋藏着姐姐以性命、以恶名铺就的救赎。
+ 
+往后岁岁，她会带着对许知瑶刻骨的憎恶，活在这世间。
+ 
+唯有麢独立暗处，将这份永不见天日的真相，独自封存。`, authorNote: [" 许知瑶＂我是夏夏亲姐姐…我怎么会害死她……我们一母同胞……靠得最近的时候是在母亲的肚子里……＂"] }]
+  },
+  {
+    name: "死寂", 
+    cover: "https://imgbed.heliar.top/i/TLDmS2qb9sem9MV4_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.33.png",
+    stories: [ { title: "第一章", images: ["https://imgbed.heliar.top/i/sPpfhPoxWoft0zEg_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.07.png",
+"https://imgbed.heliar.top/i/HbEDLuYKkX6nn8Gu_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.45.png",
+"https://imgbed.heliar.top/i/lLNMNJeM8XQNYq3V_%E6%88%AA%E5%B1%8F%202026-11-19%2019.39.39.png",
+"https://imgbed.heliar.top/i/i0psZnW2hbvITYRh_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.05.png",
+"https://imgbed.heliar.top/i/TLDmS2qb9sem9MV4_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.33.png",
+"https://imgbed.heliar.top/i/LySU8dJWEbr5Xgm3_%E6%88%AA%E5%B1%8F%202026-11-19%2019.41.00.png"], content: `末世第六年。
+ 
+灰雾终年笼罩大地，日月无光，天地灰蒙蒙一片。
+ 
+城市死了。
+ 
+文明死了。
+ 
+七十亿人类，尽数死于那场凌晨三点的灰雾灾变。
+ 
+病毒不挑人、不挑体质、不挑年龄。
+空气传播，落地即异化。
+ 
+一夜之间，人间成尸狱。
+ 
+全世界，只有我一个活人。
+ 
+我叫沈寂。
+ 
+六年，两千一百九十天。
+ 
+我听不见人声、看不见烟火、听不到一句真话。
+ 
+陪伴我的只有风声、碎玻璃声、远处永不停歇的丧尸嗬嗬低鸣，和我自己孤孤单单的心跳。
+ 
+我躲在废弃商场的通风管道里，蜷缩着身体，连呼吸都不敢太重。
+ 
+因为在这片死寂大地——
+ 
+只要你喘气，全世界的丧尸就会追杀你。
+ 
+我手里握着一把磨损严重的猎刀，刀身暗沉，沾满早已发黑的丧尸污血。背包空空荡荡，仅剩一口水，一口干粮。
+ 
+物资撑不过今天。
+ 
+我必须出去。
+ 
+必须再次闯入这片吃人的废墟。
+ 
+我轻轻挪开通风口盖板，无声落地。
+ 
+整座商场死寂如坟。
+ 
+一排排丧尸僵直伫立，遍布店铺、过道、扶梯两侧。它们垂着头，腐烂、惨白、空洞。
+ 
+它们在沉睡，在等待。
+ 
+等待唯一一个活人的气息。
+ 
+我压低身形，鞋底裹布，全程零声响潜行。
+ 
+六年生死历练，我早已不像人类。
+ 
+我学会屏息、学会伪装、学会把自己活得比丧尸更冷、更静、更麻木。
+ 
+就在我穿过女装区、准备向超市仓库搜刮物资时——
+ 
+一道极其清晰、温柔、颤抖的女声，突然从前方拐角响起：
+ 
+“有人吗？
+求求你……有没有活人？”
+ 
+我脚步瞬间钉死在地。
+ 
+头皮炸裂。
+ 
+六年了。
+ 
+我第一次听见人类的声音。
+ 
+不是嘶吼。
+不是嗬鸣。
+是温柔、恐惧、带着哭腔的求救声。
+ 
+真实、鲜活、滚烫。
+ 
+心脏时隔六年，第一次剧烈狂跳。
+ 
+我握紧猎刀，身体本能戒备，却控制不住地抬眼望去。
+ 
+拐角灯光昏暗。
+ 
+一个穿白色卫衣的女生，浑身发抖，眼眶通红，手臂擦伤，看起来脆弱得一碰就碎。
+ 
+她看见我瞬间，瞬间泪崩，踉跄扑过来：
+ 
+“你是活人！真的是活人！
+我以为全世界就我一个了！我好怕……我真的好怕！”
+ 
+她扑到我身前，死死抓着我的袖口，身体不停发抖。
+ 
+那种绝境逢生的依赖、孤独崩溃的眼泪，真实得毫无破绽。
+ 
+六年孤身，无边死寂。
+ 
+这一刻，我几乎沦陷。
+ 
+原来我不是最后一个。
+原来世上还有同类。
+原来我不用永远一个人逃亡、一个人杀尸、一个人扛住整片地狱。
+ 
+她抬头泪眼朦胧看着我：
+“哥哥，你能带带我吗？我不敢一个人待着……我可以听话、可以帮忙、我不拖后腿。”
+ 
+我沉默两秒，缓缓点头。
+ 
+人性尚存，绝境遇伴。
+ 
+我以为，这是六年黑暗末世里，唯一的救赎。
+ 
+我万万没想到——
+ 
+这是我这辈子，最致命的一次天真。
+`},
+  { title: "第二章", images: ["https://imgbed.heliar.top/i/sPpfhPoxWoft0zEg_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.07.png",
+"https://imgbed.heliar.top/i/HbEDLuYKkX6nn8Gu_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.45.png",
+"https://imgbed.heliar.top/i/lLNMNJeM8XQNYq3V_%E6%88%AA%E5%B1%8F%202026-11-19%2019.39.39.png",
+"https://imgbed.heliar.top/i/i0psZnW2hbvITYRh_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.05.png",
+"https://imgbed.heliar.top/i/TLDmS2qb9sem9MV4_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.33.png",
+"https://imgbed.heliar.top/i/LySU8dJWEbr5Xgm3_%E6%88%AA%E5%B1%8F%202026-11-19%2019.41.00.png"], content: `女生名叫苏晓。
+ 
+她说自己躲在地下密室存活六年，父母全部惨死，独自苟活到现在。
+ 
+她说话温柔、眼神干净、胆子极小。
+ 
+一路上只要听见一点丧尸动静，就吓得紧紧贴住我，浑身发抖。
+ 
+我一路杀尸开路，护着她穿梭废墟。
+ 
+我杀疾行丧尸、绕开巡夜尸群、避开领主级怪物的巡逻区。
+ 
+她跟在我身后，乖巧、安静、从不添麻烦。
+ 
+一路上她不停道谢：
+“幸好遇到你。”
+“没有你我肯定活不下去。”
+“你真好，你是我的救命恩人。”
+ 
+六年孤独积压的荒芜，好像被这几句人话慢慢填满。
+ 
+我甚至第一次生出念头：
+ 
+或许……末世不一定永远只有杀戮和孤独。
+ 
+或许，我也可以有人同行。
+ 
+傍晚，灰雾渐浓，夜色将至。
+ 
+我带着她找到一处极其隐蔽的高层安全屋，防盗门锁死、无尸群、视野绝佳。
+ 
+这是我珍藏很久、从来不舍得用的终极藏身点。
+ 
+我拿出仅剩的半块干粮，分给她大半。
+ 
+她吃得很慢，眼睛红红的看着我：
+“你为什么分给我？你自己也不够吃啊。”
+ 
+我淡淡道：
+“活着不容易。两个人，就多分一点。”
+ 
+她低头轻笑，眉眼温柔。
+ 
+那一刻，我彻底放下所有戒备。
+ 
+丧尸杀我六年，从未让我绝望。
+ 
+可下一秒——
+ 
+脖颈骤然剧痛。
+ 
+冰冷、尖锐的金属，狠狠刺入我的侧颈。
+ 
+鲜血瞬间喷涌。
+ 
+我浑身僵硬，难以置信低头。
+ 
+是她。
+ 
+是刚刚还在哭、还在道谢、还依赖我的苏晓。
+ 
+她手里握着一把锋利的碎玻璃，脸上所有柔弱、恐惧、纯真，瞬间尽数褪去。
+ 
+取而代之的，是一种极致冷漠、极致贪婪的笑。
+ 
+她轻声在我耳边低语，温柔又残忍：
+ 
+“傻子。
+你真以为末世还有善意？”
+ 
+“你这种会打猎、会杀尸、熟悉全地图、有生存经验的活人——才是末世最珍贵的物资。”
+ 
+我血液飞速流失，视野开始发黑。
+ 
+我盯着她。
+ 
+六年尸海我没死。
+无数次绝境逃亡我没死。
+领主围杀、尸潮吞城、断粮绝境我都没死。
+ 
+我没死在丧尸嘴里。
+我死在了同类手里。
+ 
+她擦掉脸上伪装的泪水，笑意冰冷：
+ 
+“你知道为什么六年从来遇不到活人吗？”
+ 
+“因为活下来的人，全是吃人的。”
+ 
+“软弱的、善良的、心软的、愿意救人的——
+早就被我们杀光了。”
+`} ,
+ { title: "第三章 最刺骨的人性真相", images: ["https://imgbed.heliar.top/i/sPpfhPoxWoft0zEg_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.07.png",
+"https://imgbed.heliar.top/i/HbEDLuYKkX6nn8Gu_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.45.png",
+"https://imgbed.heliar.top/i/lLNMNJeM8XQNYq3V_%E6%88%AA%E5%B1%8F%202026-11-19%2019.39.39.png",
+"https://imgbed.heliar.top/i/i0psZnW2hbvITYRh_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.05.png",
+"https://imgbed.heliar.top/i/TLDmS2qb9sem9MV4_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.33.png",
+"https://imgbed.heliar.top/i/LySU8dJWEbr5Xgm3_%E6%88%AA%E5%B1%8F%202026-11-19%2019.41.00.png"], content: `她缓缓站直身体，不再伪装半分。
+ 
+门外，传来轻微脚步声。
+ 
+三个男人，两高一壮，持枪走进安全屋。
+ 
+他们看着倒地流血的我，眼神毫无波澜，只有狩猎成功的冷漠。
+ 
+苏晓淡淡开口：
+“他资源很稳，身法极好，熟悉整片城区。
+跟了一路，确认没有陷阱。”
+ 
+领头男人低头看着我，语气平淡得像在谈论食物：
+ 
+“末世规则很简单。”
+ 
+“丧尸只会杀你一次。”
+ 
+“活人，会骗你、利用你、博取你同情、最后榨干你所有价值再杀你。”
+ 
+我终于全部懂了。
+ 
+懂了为什么六年全世界只剩我一个“活人”。
+ 
+不是没有幸存者。
+ 
+是所有幸存者，全部沦为了猎人。
+ 
+他们抱团、伪装、诱捕、猎杀独行善人。
+ 
+善良者死。
+心软者死。
+信任者死。
+ 
+唯独冷漠、自私、残忍、无情的人，能活。
+ 
+苏晓蹲下身，看着我逐渐涣散的瞳孔，轻声道：
+ 
+“你太孤独了，对不对？”
+“所以你看见同类，就毫不犹豫选择相信。”
+“这就是你的死穴。”
+ 
+“末世最致命的，从来不是尸潮。
+是人性的弱点——渴望陪伴、渴望善意、渴望温暖。”
+ 
+我喉间腥甜汹涌，鲜血浸透衣衫。
+ 
+窗外，满城丧尸悠悠游荡。
+ 
+它们腐烂、丑陋、凶残、无脑。
+ 
+可它们从不欺骗、从不伪装、从不假意温柔、从不利用真心。
+ 
+这一刻。
+ 
+我突然极致荒谬地清醒。
+ 
+原来丧尸，才是这片末世最干净的东西。
+ 
+至少它们坏得坦荡。
+ 
+而活人，坏得入骨。
+`} ,
+{ title: "第四章 浴血反杀，撕碎温柔地狱", images: ["https://imgbed.heliar.top/i/sPpfhPoxWoft0zEg_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.07.png",
+"https://imgbed.heliar.top/i/HbEDLuYKkX6nn8Gu_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.45.png",
+"https://imgbed.heliar.top/i/lLNMNJeM8XQNYq3V_%E6%88%AA%E5%B1%8F%202026-11-19%2019.39.39.png",
+"https://imgbed.heliar.top/i/i0psZnW2hbvITYRh_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.05.png",
+"https://imgbed.heliar.top/i/TLDmS2qb9sem9MV4_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.33.png",
+"https://imgbed.heliar.top/i/LySU8dJWEbr5Xgm3_%E6%88%AA%E5%B1%8F%202026-11-19%2019.41.00.png"], content: `就在他们放松警惕、准备搜刮我背包的瞬间。
+ 
+我濒死的眼底，骤然炸开滔天冷光。
+ 
+六年尸海生死历练，我的身体，早就超越常人极限。
+ 
+我猛地塌身、拧腰、反手抓刀——
+ 
+猎刀寒光一闪，直接划破最近一名男人的手腕。
+ 
+枪械落地！
+ 
+所有人瞬间色变！
+ 
+“他还能动！”
+“快杀了他！”
+ 
+苏晓脸上温柔彻底碎裂，露出狰狞：
+“垂死挣扎！”
+ 
+三人瞬间扑杀上来。
+ 
+但他们常年靠诱捕偷袭为生，从未真正直面过尸潮、从未经历绝境搏杀。
+ 
+他们的狠，是对弱者的狠。
+我的狠，是从地狱爬回来的杀生本能。
+ 
+我颈间流血不止，视线模糊，却招招致命。
+ 
+一刀封喉，一刀破腹，一刀断筋。
+ 
+血腥瞬间洒满整间温暖的安全屋。
+ 
+三声惨叫接连落幕。
+ 
+短短三秒，三个持枪猎人，尽数倒地。
+ 
+现场只剩苏晓一人，脸色惨白，连连后退。
+ 
+她终于慌了。
+ 
+再也没有温柔伪装，只剩极致恐惧：
+“你……你到底是什么怪物？”
+ 
+我捂着流血的脖颈，缓缓站直身体。
+ 
+浑身浴血，气息冰冷刺骨。
+ 
+我看着她，轻声开口，声音沙哑得像是砂纸摩擦：
+ 
+“我是在尸狱里活了六年的人。”
+“我杀过的怪物，比你见过的活人多万倍。”
+
+我看着她，轻声开口，声音沙哑得像是砂纸摩擦：
+ 
+“我是在尸狱里活了六年的人。”
+“我杀过的怪物，比你见过的活人多万倍。”
+“你骗得了孤独，骗得了善良。”
+“你骗不了从地狱爬出来的人。”
+ 
+她崩溃嘶吼，抓起碎片扑来。
+ 
+我侧身避开，刀背抵住她脖颈。
+ 
+这一刻，她终于彻底崩溃哭了，变回最初柔弱模样：
+“我错了！我只是想活下去！末世本来就是这样！你放过我！”
+ 
+我静静看着她。
+ 
+没有恨，没有怒。
+ 
+只剩无尽荒芜的悲凉。
+ 
+我轻声道：
+“你不配说活下去。”
+ 
+“我在尸潮里一次次死里逃生，是为了守住做人的底线。”
+“你在活人堆里勾心斗角，是为了吃掉同类活下去。”
+ 
+“丧尸蚀人肉身。”
+“你们蚀人骨髓。”
+ 
+刀光落下。
+ 
+一切终结。
+ 
+终章 世间最寒是人心
+ 
+安全屋恢复死寂。
+ 
+满地活人尸体。
+ 
+窗外，亿万丧尸依旧漫无目的地游荡、嘶吼、徘徊。
+ 
+它们永远无知、永远凶残、永远无脑。
+ 
+但这一刻。
+ 
+我突然无比释然。
+ 
+我宁愿被千万丧尸围杀一辈子。
+也再也不愿遇见一个活人。
+ 
+丧尸杀身。
+ 
+活人诛心。
+ 
+我擦净猎刀上的人血，背上破旧背包，推开安全屋大门。
+ 
+灰雾扑面，冷风彻骨。
+ 
+整片废土空城，依旧只有我一个活人的心跳。
+ 
+从此。
+ 
+我不再孤独。
+ 
+因为我彻底明白——
+ 
+真正的孤独，不是无人相伴。
+是见过人性之后，再也不敢信任任何人。
+ 
+我转身，走入漫天死寂的灰雾之中。
+ 
+继续我的逃亡。
+ 
+继续我的独活。
+ 
+在这全域尸狱里。
+ 
+唯我一人。
+ 
+干净、冷漠、无牵、无挂。
+`} ,
+{ title: "残念", images: ["https://imgbed.heliar.top/i/sPpfhPoxWoft0zEg_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.07.png",
+"https://imgbed.heliar.top/i/HbEDLuYKkX6nn8Gu_%E6%88%AA%E5%B1%8F%202026-11-19%2016.14.45.png",
+"https://imgbed.heliar.top/i/lLNMNJeM8XQNYq3V_%E6%88%AA%E5%B1%8F%202026-11-19%2019.39.39.png",
+"https://imgbed.heliar.top/i/i0psZnW2hbvITYRh_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.05.png",
+"https://imgbed.heliar.top/i/TLDmS2qb9sem9MV4_%E6%88%AA%E5%B1%8F%202026-11-19%2019.40.33.png",
+"https://imgbed.heliar.top/i/LySU8dJWEbr5Xgm3_%E6%88%AA%E5%B1%8F%202026-11-19%2019.41.00.png"], content: `灰雾沉降，暮色浸透崩塌的城区。
+腐烂的腥气无孔不入，漫过断壁残垣，遥远的枪声早已成为旧时代的幻影，天地间只剩下丧尸此起彼伏、空洞浑浊的嗬嗬喉音。
+ 
+我蜷缩在废弃便利店的货架后方，后背抵着冰冷锈蚀的铁皮，怀里攥着半块发硬开裂的压缩饼干，死死屏住呼吸。
+ 
+拖沓、沉重的脚步声，一下，又一下，隔着蒙满灰尘的玻璃缓缓挪近。
+ 
+来了。
+ 
+我抬眼望去。
+ 
+那是一具女丧尸，和街上疯狂扑杀活物的行尸截然不同。
+她行动迟缓佝偻，身上那件米白色针织衫沾满发黑的血渍尘土，手指僵硬蜷缩，掌心始终小心翼翼向上虚托，仿佛捧着一件一碰就碎的珍宝。
+对我身上鲜活的人气温热，她浑然不觉，只是漫无目的地在废墟之间来回打转，循环往复走着同一条路线。
+ 
+若换做往日逃亡，我会压低身形，悄无声息绕开这片区域，绝不浪费半分体力。
+可我的目光，被她脖颈间的物件钉住。一条褪色严重的儿童项链，小小的兔子吊坠，在灰暗光线下微微晃动。
+ 
+逃亡途中，我曾在残存的营地废墟里翻到过老人留下的日记碎片。
+ 
+灾变降临的那个凌晨，这位母亲正陪着五岁的女儿待在家中。
+丧尸撞破房门的刹那，她拼尽全力把女儿推进衣柜，用自己的身体死死抵住门板。
+獠牙刺入皮肉的瞬间，她死死捂住嘴巴，不肯发出一丝声响，怕惊吓到柜子里的孩子。
+ 
+病毒吞噬了她全部理智、记忆与痛感，将她化为行尸。
+但镌刻进骨血里的本能，没有被磨灭。
+ 
+她遗忘了自己的身份，遗忘了家的方位，遗忘了恐惧与痛苦。
+心底仅剩的执念亘古不变——找到她的小姑娘，护住她的孩子。
+ 
+日复一日，她沿着从前接女儿放学的老路徘徊游荡。
+路过垮塌的糖果店，便僵硬驻足，灰白空洞的眼球望向早已粉碎的橱窗；地上掉落的粉色发绳，会让她笨拙地弯腰，指甲刮磨着水泥地面，费力将发绳紧紧攥在掌心。
+ 
+几天前，我搜索这片废墟的时候，在变形的衣柜残骸之中，见到过那具小小的遗骸，孩童的怀里，还死死抱着一只破旧的兔子玩偶。
+ 
+暮色愈发浓重，灰雾开始翻涌，夜晚狂暴的尸潮快要降临。
+ 
+女丧尸蹒跚走到衣柜的废墟原址，缓缓俯下身子，喉咙滚出一阵模糊沙哑的嗬嗬声，像是低声哄慰孩童的呢喃。
+她僵硬的手臂伸出去，想要拉开那扇早已碎裂的柜门。
+ 
+我站在数米之外，手中钢管握得指节泛白。只要挥下去，就能终结一具行尸，可沉重的铁器，怎么都无法向下落下。
+ 
+晚风卷起漫天尘土，一片枯黄落叶悠悠飘落，轻轻落在她的手背上。
+ 
+女丧尸骤然顿住，歪了歪腐烂的头颅，好似感知到某种熟悉的东西。
+枯冷僵硬的胳膊缓缓抬起，做出一个无比笨拙的动作——那是母亲无数次抚摸孩子头顶的姿态。
+ 
+眼前空空荡荡。
+ 
+没有孩童的笑颜，没有稚嫩的应答。什么都没有。
+ 
+她永远等不到自己的女儿。
+ 
+片刻之后，她直起佝偻的脊背，拖着残破沉重的躯体，再度踏上那条没有终点的归途。拖沓空洞的脚步声，一点点消失在暮色笼罩的废墟深处。
+那根捡来的粉色发绳，被枯朽的手指，攥得牢不可破。
+ 
+哐当一声。
+ 
+钢管从我手中滑落，砸在满地碎石之上。
+刺耳的声响在空旷街区炸开，远处街巷，无数丧尸的嗬嗬声瞬间应声而起。
+ 
+我后背一阵发凉，迅速弯腰捡起武器。
+ 
+而这份片刻的动容，不能停留太久。
+灰雾渐浓，黑夜将至，整片城市的尸群已经被声响惊动。
+ 
+我不能沉溺情绪，只能继续逃亡。
+ 
+丧尸没有思念，没有悲伤。
+可母爱，逃过了病毒。
+`} ]
+  },
+  {
+    name: "霜刃误风月（霜刃误清欢）", 
+    cover: "https://imgbed.heliar.top/i/r0dagmdtpTXtXTFn_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.55.png",
+    stories: [ { title: "1.霜刃", images: ["https://imgbed.heliar.top/i/spfULLf9uWZ1IssD_%E6%88%AA%E5%B1%8F%202026-11-19%2019.47.43.png",
+"https://imgbed.heliar.top/i/pQYNqWmQandnzsqN_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.16.png",
+"https://imgbed.heliar.top/i/RP2v0nXrLx7q3csL_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.35.png",
+"https://imgbed.heliar.top/i/r0dagmdtpTXtXTFn_%E6%88%AA%E5%B1%8F%202026-11-19%2019.48.55.png",
+"https://imgbed.heliar.top/i/Qy0T1r5wUSbxLwwf_%E6%88%AA%E5%B1%8F%202026-11-19%2019.49.23.png",
+"https://imgbed.heliar.top/i/EIxwQOZSHzVYX9n-_%E6%88%AA%E5%B1%8F%202026-11-19%2019.49.45.png",
+"https://imgbed.heliar.top/i/ItDacuEJlbTgkXGV_%E6%88%AA%E5%B1%8F%202026-11-19%2019.50.12.png",
+"https://imgbed.heliar.top/i/uvMP5h6bsW86tnV8_%E6%88%AA%E5%B1%8F%202026-11-19%2019.50.35.png"], content: `春山落桃第五年。
+沈清寒亲手，将淬毒寒刃刺入了谢临渊的胸膛。
+ 
+世人都说，红衣刺客少主与温润镇北侯，正邪殊途，生死为敌。
+只有沈清寒心知肚明。
+这五年刀光剑影，从不是厮杀。
+是她藏在刀刃里，不敢外露的深情。
+ 
+无人知晓。
+他们早在年少相识。
+ 
+幼时巷陌相伴，岁岁朝夕。
+谢临渊从垂髫之年，便心悦她一人。
+小小少年，满心满眼，全是那个活泼明媚的小丫头。
+ 
+奈何世事无常。
+沈家逢难，满门倾覆。
+年幼的沈清寒被带入刺客楼，从此堕入黑暗，不见天光。
+而谢临渊困于侯府权锁，年少无力。
+一场变故，生生拆散两小无猜。
+一别数年，杳无音信。
+ 
+他念了她整整十余年。
+ 
+五年前春山桃林。
+不是初遇，是他踏遍山河，蓄意奔赴的重逢。
+ 
+彼时她重伤濒死，被师门追杀，倒在漫山芳菲里。
+是谢临渊救下她。
+为保她一命，他硬生生替她挡下刺客楼阴寒奇毒。
+ 
+毒入经脉，无解无医。
+平日蛰伏不露，一旦气血大乱、身受重创，便会瞬间反噬，摧骨蚀魂。
+ 
+他瞒了所有人。
+瞒了五年。
+更瞒了沈清寒。
+ 
+他怕她愧疚，怕她不安。
+便一人扛下所有病痛，所有隐忍。
+ 
+五年光阴，物是人非。
+她成了冷血无情、身不由己的刺客。
+他成了权倾朝野、镇守北疆的侯爷。
+ 
+昔日青梅竹马，沦为正邪死敌。
+ 
+无数个雨夜对峙，兵刃相撞，寒光炸裂夜色。
+招招凌厉，招招留手。
+她假意凶狠，他暗自退让。
+ 
+眼底缱绻汹涌，却被身份、宿命、立场，死死困住。
+ 
+温柔藏锋，深情藏刃。
+相爱，只能相杀。
+ 
+这一日，终局降临。
+ 
+刺客楼大殿阴冷刺骨。
+师尊将淬毒寒刃拍在石案，声音冰冷决绝。
+ 
+“三日之内，取谢临渊性命。”
+“违命，楼中千余死士，尽数陪葬。”
+ 
+千条人命压身。
+沈清寒无路可退。
+ 
+她握着冰冷刃身，指尖发颤，心如刀割。
+她要亲手杀死，世间唯一待她温柔之人。
+ 
+秋夜皓月，庭院萧瑟。
+红衣翻飞，寒刃冷光彻骨。
+沈清寒踏入空寂侯府。
+ 
+院中无护卫，无侍从。
+谢临渊一身月白锦袍，孤身立在月色下。
+安静等她来。
+ 
+他眼底无惊无惧，只剩经年温柔。
+“清寒，你来了。”
+ 
+沈清寒喉间哽咽，强忍泪意，语气狠绝。
+“奉命取你首级，今日，不死不休。”
+ 
+利刃出鞘。
+步步穿心。
+ 
+谢临渊不闪不避，迎面而上。
+ 
+锋刃刺破锦衣，深深没入胸膛。
+猩红血色瞬间漫开，染透一片纯白。
+ 
+就在入刃刹那。
+ 
+蛰伏五年的剧毒，轰然爆发。
+ 
+白霜爬满眉眼脖颈。
+他满头乌黑青丝，寸寸霜白。
+ 
+一瞬白头。
+ 
+五年噬骨寒痛，五年隐忍深情。
+尽数毁在她这一刀里。
+ 
+沈清寒浑身剧震，泪水轰然砸落。
+所有伪装的冷硬，瞬间崩塌殆尽。
+ “你为什么不躲……”
+
+谢临渊气息渐弱，抬手，温柔拭去她的泪。
+声音轻得像风，字字成全。
+ 
+“我若逃，你必死。”
+“以我一命，换你余生安稳。”
+“清寒，遇见你，我此生无憾。”
+ 
+话音落。
+眸中光亮寂灭。
+身躯重重倒落血泊之中。
+她跪地拥住渐渐冰冷的他，崩溃颤抖。
+ 
+ 一年后。
+ 
+沈清寒独居空院，日夜相思，夜夜煎熬。
+她始终以为，是自己的刺杀，终结了他性命。
+ 
+直到她拆开那枚他常年贴身佩戴的白玉簪。
+ 
+一张泛黄信纸，轻轻飘落。
+ 
+字字剜心。
+ 
+【年少初见，一念倾心，岁岁难忘。
+山河万里寻你，春山重逢蓄意。
+替你承毒五载，日夜噬痛，未曾一语。
+我早陷皇权构陷，必死无疑。
+宁死于你手，护你清白安稳。
+此生不负天下，唯负自身。
+若有来生，弃侯府荣华，舍权位功名。
+只做寻常布衣，与你春山相守，岁岁无别，不负风月，不负卿。】
+ 
+原来。
+刀剑相让，是他纵容。
+常年畏寒，是剧毒缠身。
+坦然赴死，是他早已想好的结局。
+ 
+他从年少爱她，寻她十载，护她五载。
+默默扛下所有黑暗，所有病痛，所有宿命。
+ 
+而她，亲手葬送了最爱她的人。
+ 
+霜刃一出，误了风月，误了年少，误了余生。
+ 
+从此。
+风月年年在。
+山河岁岁空。
+世间再无谢临渊，等她一场春山归逢。
+`, authorNote: ["1. 如果当年春山没有重逢，如果雨夜没有对峙，如果那一刀我稍稍偏上半寸", 
+"是不是谢临渊，就能好好活下来",
+"2. 春山再无初见，风月再无归人",
+"3. 清寒，别自责，别回头，别念我",
+"4. 不怨你刀锋绝情",
+"只怨此生太短 相逢太晚 相守太难",
+"5. 清寒，好好活下去。",
+"往后春山桃开，不必再想起我",
+"6. 清寒，这世间风月大好，你不必困于过往，不必为我赎罪",
+"7. 只是我穷尽半生的偏爱与奔赴",
+"终究，落得霜刃穿心，风月两空","我以后还要写一个，女主失忆爱错了人，还被利用杀死了最爱的人，脑洞",
+"还有女主开始不喜欢男主，男主一直默默守护她，等女主终于动心的时候，男主死了"] } ]
+  },
+  {
+    name: "红鞋泣嫁", 
+    cover: "https://imgbed.heliar.top/i/KGVwh1qCop3lL6t9_IMG_2849.jpg",
+    stories: [ { title: "红鞋泣嫁", images: ["https://imgbed.heliar.top/i/pvVXI6gIuaibAnZU_IMG_2848.jpg",
+"https://imgbed.heliar.top/i/KGVwh1qCop3lL6t9_IMG_2849.jpg"], content: `百年古邑，城南有一座废弃百年的绣楼。
+ 
+青砖爬满枯藤，木窗朽烂漏风，整栋楼终年不见日光，是当地人代代避讳的凶地。
+ 
+老辈人口口相传：楼里困着一位绣花女鬼，名唤阿绣。
+ 
+百年前，阿绣是整座城池最温婉手巧的女子。自幼浸于针线丹青，一生独爱绣牡丹。旁人绣花都求圆满盛放、富贵无双，唯独阿绣偏爱留白残花。
+ 
+她心性柔软纯善，待世人皆温良，眉眼永远带着浅浅温顺，从未与人结怨。
+ 
+年少时，她偶遇清贫书生，一见倾心，私定终身。
+ 
+书生寒窗苦读，一朝赴京赶考，许诺她金榜归来，十里红妆，娶她为妻。
+ 
+阿绣信了。
+ 
+这一等，便是整整三年。
+ 
+三年寒来暑往，她闭门居于绣楼，日夜不眠，亲手为自己缝制嫁衣、绣制婚鞋。她一针一线，细细描摹残缺牡丹，每一朵花都留着空白缺口。
+ 
+旁人不解，问她缘由。
+ 
+阿绣温柔浅笑，轻声道：“花残留白，并非缺憾，是留一寸圆满，待良人归来补全。”
+ 
+嫁衣绣成，红鞋缝毕，婚期已定，喜帖遍发。
+ 
+整座小城都等着这场圆满喜事，阿绣日日立于绣楼窗前，望穿秋水，静待归人。
+ 
+可等来的，不是迎亲花轿，而是一场诛心噩耗。
+ 
+书生京城高中，金榜题名，一朝翻身得高官厚禄。为攀附权贵、平步青云，他转头背弃旧约，迎娶当朝权贵之女，将三年相守、一生承诺，弃如敝履。
+ 
+婚期前夜，喜讯碎成彻骨寒冰。
+ 
+阿绣未哭未闹，只是静静穿着满身红妆，坐在空荡的绣楼里，一夜无言。
+ 
+可宗族族人，最是重脸面、惧丑闻。
+ 
+为掩盖书生负心、世家蒙羞的丑事，为保全宗族名声，他们颠倒黑白、捏造妄言，对外大肆散播：阿绣命格不祥、身缠鬼魅、克夫败运，是她妖邪缠身，不配婚嫁。
+ 
+一纸污名，锁住了她的余生。
+ 
+大婚当夜，满城张灯结彩、锣鼓喧天，家家户户喜庆满堂。
+ 
+唯独这座绣楼，成了囚牢地狱。
+ 
+族人狠心封死绣楼所有门窗，钉死木门、糊死窗纸、断绝所有粮草水源，将身着大红嫁衣、脚踩绣花红鞋的阿绣，活活困死在了孤楼之中。
+ 
+无人施救，无人问津，无人听闻她的哀求。
+ 
+漫漫长夜，红烛高燃，喜字鲜红刺眼，满身嫁衣灼灼似血。
+ 
+整座城的热闹，衬得绣楼死寂阴森。
+ 
+绝境之中，阿绣从未恨负心书生，从未怨凉薄世人，从未咒无情宗族。
+ 
+她至死，心性依旧温柔纯粹。
+ 
+弥留之际，枯坐空楼、濒临饿死冻死的最后一刻，她一遍又一遍，低低呢喃着同一句话，声音微弱空灵，绕楼不散：
+ 
+“我鞋绣好了，你怎么还不来？”
+ 
+一声，又一声，直至气息断绝。
+ 
+她含冤而死，却依旧心存期许，无半分恶念。
+ 
+可世人从未放过一个可怜人。
+ 
+阿绣死后，宗族为彻底掩去罪孽、固化流言，刻意编造诡事、立下伪规，将她彻底污名化为索命厉鬼。
+ 
+他们谎称绣楼女鬼怨气滔天、嗜杀生人、缠魂索命，下令后人永世不得靠近绣楼，不得提阿绣之名。
+ 
+百年来，世人惧她、骂她、避她、厌她，代代相传她是害人恶鬼，用尽流言与偏见，死死镇压着她一缕残魂。
+ 
+可无人知晓，这百年阴森诡谲的绣楼，从来没有害人厉鬼。
+ 
+夜半三更，荒楼里悠悠响起的细碎脚步声，从不是索命寻仇。
+ 
+是百年孤魂阿绣，日复一日、夜复一夜，穿着那双亲手绣制的大红婚鞋，在空空荡荡的死寂绣楼里，来来回回，一遍遍等候那个永远不会归来的人。
+ 
+深夜楼宇间飘忽的针线簌簌声，从不是鬼魅作祟。
+ 
+是她至死未灭的执念，百年不散，依旧在默默绣着未完成的圆满，等着一句迟来的归期。
+ 
+世人惧怕的缠人红鞋、近身阴气，从来不是索命害人。
+ 
+只是她被困孤楼百年，岁岁年年孤身一人，太寂寥、太孤苦、太渴望一丝人间暖意。
+ 
+她缠人、近人、留人，从无恶意，只是单纯想有人看一看她，陪一陪这困了百年的孤魂，终结她无尽的等待。
+ 
+世人见她阴森可怖，殊不知，整座绣楼的百年阴风、夜半异响、诡异死寂，
+ 
+从来不是恶鬼作祟。
+ 
+只是一个温柔善良的姑娘，被负、被弃、被污、被锁、被冤死之后，
+ 
+无人听闻、无人共情、无人救赎的，百年泣血哭声。
+ 
+她从未害过人，
+ 
+可这人间，
+ 
+生生害了她百年。
+`} ]
+  },
+  {
+    name: "梦里的故事", 
+    cover: "https://imgbed.heliar.top/i/C5pmFAz_28wqnkpi_IMG_3112.jpg",
+    stories: [ { title: "1.入梦", images: ["https://imgbed.heliar.top/i/C5pmFAz_28wqnkpi_IMG_3112.jpg",
+"https://imgbed.heliar.top/i/WkuSIg2Jp0tDszrn_IMG_3113.jpg"], content: `把梦里的故事讲给麢听，他也给我讲了一个。
+麢的故事如下
+一桩旧事
+身为灵魂往生者
+这个故事里我依旧在人间之外、不入轮回。
+静静俯瞰人间一对深陷时空闭环的恋人。
+ 
+男生叫陆时衍，清冷寡言、温柔偏执，是天生的时空守序者，身负逆转光阴的禁忌命格。
+女生叫温予眠，温柔干净、明媚柔软，是被时空漏洞裹挟、注定早逝的宿命之人。
+ 
+他们的命运，从相遇那一刻就写好了悲剧。
+ 
+温予眠的命格天生残缺，每一条时间线里，她都会在二十二岁的深秋，死于一场无解的意外车祸，无药可解、无人可救，是天道定死的终局。
+ 
+陆时衍第一次亲眼看着她离世的那一刻，崩溃失控，触碰了世间禁忌——逆转时空。
+ 
+他透支自己的生命、撕碎时间长河，一次次回溯过往，修改所有结局。
+每一条轮回里，他拼尽全力护她周全，挡下车祸、避开灾祸、抹平意外。
+ 
+而温予眠，在无数次时空重叠中，隐约残存零碎的熟悉感。
+她不知道自己轮回了多少次，却本能地深爱这个一次次救她于死地的少年。
+她也偷偷学会了逆转时空，想替他承担代价，想换他一世安稳。
+ 
+双向扭转时空，双向以命护爱，两人在无数次时间闭环里，彼此救赎、彼此消耗，熬碎了岁岁年年。
+ 
+可天道守恒，从无两全。
+反复的时空篡改，让时空规则彻底崩坏，两人的命格死死绑定，只能活一人。
+ 
+无数次轮回试探后，陆时衍终于找到了唯一的破局之法。
+ 
+最后一次时空回溯，他没有再躲避灾祸，没有再改写意外。
+深秋的十字路口，车流呼啸，灯火清冷。
+他在车祸来临的瞬间，毫不犹豫，将温予眠死死护在怀里。
+ 
+以自身神魂、血肉、命格一切为祭品，完成最终的以命换命。
+ 
+天道规则彻底清算：
+他代替她承受所有死亡因果、时空反噬、轮回罪孽。
+代价惨烈至极：永久消散，彻底抹除存在痕迹。
+世间山川湖海、人间岁月光阴，再也没有陆时衍这个人。
+档案清零、记忆清零、痕迹清零，彻彻底底归于虚无，永不复生。
+ 
+而温予眠被时空之力温柔庇护，活了下来。
+但所有关于陆时衍的一切，被天道彻底剥离、清空。
+ 
+她平安长大，岁岁无忧，温柔明媚的过完一生。
+她会路过他们相遇的街道，会听过熟悉的晚风，会偶尔心头莫名空落。
+可她永远不会记得，曾有一个少年，为她轮回千次，为她逆天改命，为她散尽神魂、永世消亡。
+ 
+而我这和你一样，看完了整场无人知晓的盛大暗恋与救赎。
+而世间最大的遗憾：我救了你所有余生，你余生，再无我分毫。
+麢说他的故事和我的梦有重合
+是一种回声`, authorNote: ["那天陆时衍找到了麢，他知道麢的身份，知道麢能告诉他破局之法，麢问陆时衍说，你知道那么做的后果吗，强行插手，必有代价，值得吗，陆时衍说，值得，我只要她活着，好好的活着。"] } ]
+  }
+];
+
+let currentSeriesIndex = -1, currentStoryIndex = -1;
+let imgIndex = 0, timer = null, noteTimer = null;
+let noteIndex = 0, flipping = false;
+
+const homeView = document.getElementById('homeView'), seriesView = document.getElementById('seriesView'), readerView = document.getElementById('reader');
+const navBar = document.getElementById('navBar');
+const backBtn = document.getElementById('backBtn'), themeBtn = document.getElementById('themeBtn'), musicBtn = document.getElementById('musicBtn');
+const seriesWrap = document.getElementById('seriesWrap'), storyListWrap = document.getElementById('storyListWrap');
+const carousel = document.getElementById('carousel'), dotsBox = document.getElementById('dots');
+const titleEl = document.getElementById('storyTitle'), textEl = document.getElementById('storyText');
+const authorNoteContainer = document.getElementById('authorNoteContainer');
+const scrollableContent = document.getElementById('scrollableContent');
+const prevBtn = document.getElementById('prevBtn'), nextBtn = document.getElementById('nextBtn');
+const bookEl = document.getElementById('book');
+const modalMask = document.getElementById('modalMask'), modalText = document.getElementById('modalText'), modalOk = document.getElementById('modalOk');
+const guideMask = document.getElementById('guideMask'), guideBtn = document.getElementById('guideBtn');
+
+const isMobile = () => window.matchMedia("(max-width: 768px) and (orientation: portrait)").matches;
+
+const bgMusicUrl = "https://imgbed.heliar.top/i/hnzfd3MlRx2jFDYU_ScreenRecording_11-21-2026%2013-43-20_1.mp3"; 
+const audio = new Audio(bgMusicUrl);
+audio.loop = true;
+musicBtn.addEventListener('click', () => {
+  if (audio.paused) { audio.play(); musicBtn.textContent = '🎵'; musicBtn.style.background = 'rgba(255,255,255,0.3)'; }
+  else { audio.pause(); musicBtn.textContent = '🔇'; musicBtn.style.background = 'var(--btn-bg)'; }
+});
+
+themeBtn.addEventListener('click', () => {
+  document.body.classList.toggle('dark-mode');
+  themeBtn.textContent = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
+});
+
+document.addEventListener('DOMContentLoaded', () => { guideMask.classList.add('show'); });
+guideBtn.addEventListener('click', () => { guideMask.classList.remove('show'); });
+
+function showView(view) {
+  [homeView, seriesView, readerView].forEach(v => v.classList.add('hidden'));
+  view.classList.remove('hidden');
+  backBtn.classList.toggle('hidden', view === homeView);
+  navBar.classList.toggle('hidden', view !== readerView);
+}
+
+function renderHome() {
+  seriesWrap.innerHTML = '';
+  seriesData.forEach((series, i) => {
+    const card = document.createElement('div');
+    card.className = 'series-card';
+    card.style.animationDelay = (i * 0.05) + 's';
+    const div = document.createElement('div'); div.className = 'circle';
+    const img = document.createElement('img'); img.src = series.cover;
+    div.appendChild(img); 
+    const label = document.createElement('div'); label.className = 'series-name'; label.textContent = series.name;
+    card.appendChild(div); card.appendChild(label);
+    card.addEventListener('click', () => { currentSeriesIndex = i; renderSeries(i); showView(seriesView); });
+    seriesWrap.appendChild(card);
+  });
+  showView(homeView);
+}
+
+function renderSeries(seriesIdx) {
+  const series = seriesData[seriesIdx]; storyListWrap.innerHTML = '';
+  series.stories.forEach((story, i) => {
+    const item = document.createElement('div'); item.className = 'story-item'; item.style.animationDelay = (i * 0.1) + 's';
+    item.textContent = story.title; item.addEventListener('click', () => openStory(seriesIdx, i));
+    storyListWrap.appendChild(item);
+  });
+}
+
+function openStory(seriesIdx, storyIdx) {
+  currentSeriesIndex = seriesIdx; currentStoryIndex = storyIdx;
+  imgIndex = 0;
+  
+  renderStoryText();
+  renderImages();
+  startTimer();
+  showView(readerView);
+  scrollableContent.scrollTop = 0; // 重置滚动条
+  updateButtons();
+}
+
+function renderStoryText() {
+  const story = getStory();
+  titleEl.textContent = story.title; 
+  textEl.innerHTML = story.content || ''; 
+
+  clearInterval(noteTimer);
+  if (story.authorNote && story.authorNote.length > 0) {
+    authorNoteContainer.innerHTML = `<div class="author-note-box"><span class="author-note-text" id="authorNoteText">${story.authorNote[0]}</span></div>`;
+    noteIndex = 0;
+    if (story.authorNote.length > 1) {
+      noteTimer = setInterval(() => {
+        const textBox = document.getElementById('authorNoteText');
+        if (textBox) {
+          textBox.style.opacity = 0;
+          setTimeout(() => {
+            noteIndex = (noteIndex + 1) % story.authorNote.length;
+            textBox.textContent = story.authorNote[noteIndex];
+            textBox.style.opacity = 1;
+          }, 600);
+        }
+      }, 4000);
+    }
+  } else {
+    authorNoteContainer.innerHTML = '';
+  }
+}
+
+function getStory() { return seriesData[currentSeriesIndex].stories[currentStoryIndex]; }
+
+function renderImages() {
+  const images = getStory().images;
+  carousel.querySelectorAll('img').forEach(img => img.remove()); dotsBox.innerHTML = ''; imgIndex = 0;
+  if (!images || images.length === 0) { dotsBox.style.display = 'none'; return; }
+  images.forEach((src, i) => {
+    const img = document.createElement('img'); img.src = src;
+    if (i === 0) img.classList.add('active');
+    carousel.appendChild(img);
+    const dot = document.createElement('span'); if (i === 0) dot.classList.add('on');
+    dot.addEventListener('click', () => { goImage(i); resetTimer(); });
+    dotsBox.appendChild(dot);
+  });
+  dotsBox.style.display = images.length > 1 ? 'flex' : 'none';
+}
+
+function goImage(i) {
+  const imgs = carousel.querySelectorAll('img'); const dots = dotsBox.querySelectorAll('span');
+  if (imgs.length === 0) return;
+  imgIndex = (i + imgs.length) % imgs.length;
+  imgs.forEach((img, idx) => img.classList.toggle('active', idx === imgIndex));
+  dots.forEach((d, idx) => d.classList.toggle('on', idx === imgIndex));
+}
+
+function startTimer() { clearInterval(timer); const imgs = carousel.querySelectorAll('img'); if (imgs.length > 1) timer = setInterval(() => goImage(imgIndex + 1), 5000); }
+function resetTimer() { startTimer(); }
+
+function updateButtons() {
+  const isFirst = (currentSeriesIndex === 0 && currentStoryIndex === 0);
+  prevBtn.disabled = isFirst;
+  // 下一页永远不禁用，用弹窗提示
+  nextBtn.disabled = false;
+}
+
+/* 核心切换故事逻辑 */
+function goNextStory() {
+  if (flipping) return;
+  const nextStoryIdx = currentStoryIndex + 1;
+  if (nextStoryIdx < seriesData[currentSeriesIndex].stories.length) {
+    flipToStory(currentSeriesIndex, nextStoryIdx, false);
+  } else {
+    const nextSeriesIdx = currentSeriesIndex + 1;
+    if (nextSeriesIdx < seriesData.length) {
+      flipToStory(nextSeriesIdx, 0, false);
+    } else {
+      showModal('已无更多内容');
+    }
+  }
+}
+
+function goPrevStory() {
+  if (flipping) return;
+  const prevStoryIdx = currentStoryIndex - 1;
+  if (prevStoryIdx >= 0) {
+    flipToStory(currentSeriesIndex, prevStoryIdx, true);
+  } else {
+    const prevSeriesIdx = currentSeriesIndex - 1;
+    if (prevSeriesIdx >= 0) {
+      const lastStoryIdx = seriesData[prevSeriesIdx].stories.length - 1;
+      flipToStory(prevSeriesIdx, lastStoryIdx, true);
+    }
+  }
+}
+
+/* 3D 翻书动画执行 */
+function flipToStory(sIdx, stIdx, reverse) {
+  flipping = true;
+  clearInterval(timer); clearInterval(noteTimer);
+
+  if (isMobile()) {
+    // 手机端用淡入淡出切换
+    const contentBox = document.querySelector('.page-right .content');
+    contentBox.classList.remove('anim-next', 'anim-prev');
+    void contentBox.offsetWidth; // 触发重绘
+    contentBox.classList.add(reverse ? 'anim-prev' : 'anim-next');
+    
+    setTimeout(() => {
+      currentSeriesIndex = sIdx; currentStoryIndex = stIdx;
+      renderStoryText();
+      renderImages();
+      startTimer();
+      scrollableContent.scrollTop = 0;
+      updateButtons();
+      setTimeout(() => { flipping = false; }, 400);
+    }, 200);
+
+  } else {
+    // 电脑端 3D 翻书
+    const flip = document.createElement('div'); flip.className = 'flip-page'; flip.textContent = reverse ? '←' : '→';
+    bookEl.appendChild(flip); void flip.offsetWidth;
+    
+    if (!reverse) { flip.classList.add('forward'); } else {
+      flip.style.transition = 'none'; flip.style.transform = 'rotateY(-180deg)'; void flip.offsetWidth;
+      flip.style.transition = 'transform .8s ease-in-out'; flip.style.transform = 'rotateY(0deg)';
+    }
+    
+    setTimeout(() => {
+      currentSeriesIndex = sIdx; currentStoryIndex = stIdx;
+      renderStoryText();
+      renderImages();
+      startTimer();
+      scrollableContent.scrollTop = 0;
+      updateButtons();
+    }, 400);
+    
+    setTimeout(() => { flip.remove(); flipping = false; }, 850);
+  }
+}
+
+function showModal(msg) { modalText.textContent = msg; modalMask.classList.add('show'); }
+modalOk.addEventListener('click', () => { modalMask.classList.remove('show'); renderSeries(currentSeriesIndex); showView(seriesView); });
+
+backBtn.addEventListener('click', () => {
+  clearInterval(timer); clearInterval(noteTimer);
+  if (!readerView.classList.contains('hidden')) { renderSeries(currentSeriesIndex); showView(seriesView); }
+  else if (!seriesView.classList.contains('hidden')) { showView(homeView); }
+});
+
+prevBtn.addEventListener('click', goPrevStory);
+nextBtn.addEventListener('click', goNextStory);
+
+// 键盘快捷键
+document.addEventListener('keydown', (e) => { 
+  if (readerView.classList.contains('hidden')) return; 
+  if (e.key === 'ArrowLeft') goPrevStory(); 
+  if (e.key === 'ArrowRight') goNextStory(); 
+});
+
+// 手机端滑动切换
+let touchStartX = 0, touchStartY = 0;
+document.body.addEventListener('touchstart', (e) => { touchStartX = e.touches[0].clientX; touchStartY = e.touches[0].clientY; }, { passive: true });
+document.body.addEventListener('touchend', (e) => {
+  if (!readerView.classList.contains('hidden')) {
+    const dx = e.changedTouches[0].clientX - touchStartX; const dy = e.changedTouches[0].clientY - touchStartY;
+    // 只有当滑动距离够长，且横向大于纵向才触发
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) { 
+      if (dx < 0) goNextStory(); else goPrevStory(); 
+    }
+  }
+}, { passive: true });
+
+renderHome();
+</script>
+</body>
+</html>
